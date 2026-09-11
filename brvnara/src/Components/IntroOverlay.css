@@ -1,0 +1,99 @@
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: var(--color-brand-cream);
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+.intro-overlay.is-leaving {
+  opacity: 0;
+}
+
+.intro-cabin {
+  width: min(92vw, 720px);
+  height: min(68vh, 560px);
+}
+
+/* Brendirani fallback (dok nema Lottie fajla) */
+.intro-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.intro-logo {
+  width: 120px;
+  height: auto;
+  animation: intro-logo-pulse 1.6s ease-in-out infinite;
+}
+
+.intro-bar {
+  position: relative;
+  height: 3px;
+  width: 180px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgba(53, 71, 51, 0.15);
+}
+
+.intro-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 45%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #6b4226, transparent);
+  animation: intro-bar-sweep 1.4s ease-in-out infinite;
+}
+
+.intro-skip {
+  position: absolute;
+  bottom: 2rem;
+  right: 2rem;
+  border: 0;
+  background: transparent;
+  color: #6b4226;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border-radius: 9999px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.intro-skip:hover {
+  color: #354733;
+  background: rgba(53, 71, 51, 0.08);
+}
+
+@keyframes intro-logo-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes intro-bar-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  55%,
+  100% {
+    transform: translateX(320%);
+  }
+}

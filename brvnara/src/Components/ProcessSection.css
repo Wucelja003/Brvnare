@@ -1,0 +1,78 @@
+/* Eyebrow linija koja "prelazi" */
+.process-hline {
+  position: relative;
+  height: 2px;
+  width: 6rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(107, 66, 38, 0.18);
+}
+
+.process-hline::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #6b4226, transparent);
+  animation: process-sweep-x 2.8s ease-in-out infinite;
+}
+
+@keyframes process-sweep-x {
+  0% {
+    transform: translateX(-120%);
+  }
+  55%,
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+/* Otkrivanje koraka pri skrolu */
+.process-step {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.process-step.revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* Popuna vertikalne linije prati skrol (visinu postavlja JS) */
+.process-fill {
+  transition: height 0.12s linear;
+}
+
+/* Tačka koja se "upali" kad je linija dostigne */
+.process-dot {
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    color 0.35s ease,
+    box-shadow 0.35s ease,
+    transform 0.35s ease;
+}
+
+.process-dot.is-active {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 6px rgba(107, 66, 38, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .process-hline::after {
+    animation: none;
+  }
+  .process-step {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .process-fill,
+  .process-dot {
+    transition: none;
+  }
+}
