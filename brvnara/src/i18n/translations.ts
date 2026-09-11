@@ -68,6 +68,17 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     'packages.eyebrow': '(04) — Ponuda',
     'packages.title': 'Paketi',
+    'packages.subtitle':
+      'Svaka brvnara je priča za sebe — izaberite nivo koji odgovara vašim željama i prostoru.',
+    'packages.priceLabel': 'Cena',
+
+    'faq.eyebrow': '(05) — Česta pitanja',
+    'faq.title': 'Kako možemo da pomognemo?',
+    'faq.search': 'Pretraži pitanja…',
+    'faq.empty': 'Nema rezultata za',
+    'faq.clear': 'Očisti filtere',
+    'faq.help': 'Ne nalazite odgovor?',
+    'faq.helpCta': 'Pišite nam',
     'packages.priceFrom': 'od',
     'pkg.cabin.name': 'Vikendica',
     'pkg.family.name': 'Porodična brvnara',
@@ -147,6 +158,17 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     'packages.eyebrow': '(04) — Offer',
     'packages.title': 'Packages',
+    'packages.subtitle':
+      'Every cabin is a story of its own — choose the level that fits your wishes and space.',
+    'packages.priceLabel': 'Price',
+
+    'faq.eyebrow': '(05) — FAQ',
+    'faq.title': 'How can we help?',
+    'faq.search': 'Search questions…',
+    'faq.empty': 'No results for',
+    'faq.clear': 'Clear filters',
+    'faq.help': "Can't find what you need?",
+    'faq.helpCta': 'Contact us',
     'packages.priceFrom': 'from',
     'pkg.cabin.name': 'Weekend cabin',
     'pkg.family.name': 'Family cabin',
@@ -226,6 +248,17 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     'packages.eyebrow': '(04) — Angebot',
     'packages.title': 'Pakete',
+    'packages.subtitle':
+      'Jedes Haus ist eine eigene Geschichte — wählen Sie das Paket, das zu Ihren Wünschen passt.',
+    'packages.priceLabel': 'Preis',
+
+    'faq.eyebrow': '(05) — FAQ',
+    'faq.title': 'Wie können wir helfen?',
+    'faq.search': 'Fragen durchsuchen…',
+    'faq.empty': 'Keine Ergebnisse für',
+    'faq.clear': 'Filter zurücksetzen',
+    'faq.help': 'Nicht gefunden, was Sie suchen?',
+    'faq.helpCta': 'Kontaktieren Sie uns',
     'packages.priceFrom': 'ab',
     'pkg.cabin.name': 'Wochenendhaus',
     'pkg.family.name': 'Familien-Blockhaus',

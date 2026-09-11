@@ -1,22 +1,7 @@
-import {
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactElement,
-  type SVGProps,
-} from 'react'
+import { useEffect, useRef, useState, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type Variants,
-} from 'motion/react'
 import { useI18n } from '../i18n/LanguageContext'
 import './ProcessSection.css'
-
-const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
 const iconBase: SVGProps<SVGSVGElement> = {
   viewBox: '0 0 24 24',
@@ -62,12 +47,7 @@ const KeyIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-type Step = {
-  key: string
-  Icon: (p: SVGProps<SVGSVGElement>) => ReactElement
-}
-
-const steps: Step[] = [
+const steps = [
   { key: 'step1', Icon: ConsultIcon },
   { key: 'step2', Icon: DesignIcon },
   { key: 'step3', Icon: BuildIcon },
@@ -81,233 +61,160 @@ export default function ProcessSection({
   viewAllHref?: string
 }) {
   const { t } = useI18n()
-  const reduce = useReducedMotion()
-  const [active, setActive] = useState(0)
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const timelineRef = useRef<HTMLDivElement>(null)
+  const [progress, setProgress] = useState(0)
+  const [active, setActive] = useState<boolean[]>(() => steps.map(() => false))
+  const [revealed, setRevealed] = useState<boolean[]>(() =>
+    steps.map(() => false),
+  )
 
-  const container: Variants = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.12 } },
-  }
-  const item: Variants = {
-    hidden: { opacity: 0, y: reduce ? 0 : 24 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.65, ease: EASE } },
-  }
-
-  const selectTab = (index: number) => {
-    const next = (index + steps.length) % steps.length
-    setActive(next)
-    tabRefs.current[next]?.focus()
-  }
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-      event.preventDefault()
-      selectTab(active + 1)
-    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-      event.preventDefault()
-      selectTab(active - 1)
-    } else if (event.key === 'Home') {
-      event.preventDefault()
-      selectTab(0)
-    } else if (event.key === 'End') {
-      event.preventDefault()
-      selectTab(steps.length - 1)
+  // Popuna linije + aktivne tačke prate skrol
+  useEffect(() => {
+    const wrap = timelineRef.current
+    if (!wrap) return
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const rect = wrap.getBoundingClientRect()
+      const vh = window.innerHeight || 800
+      const anchor = vh * 0.5
+      const p = Math.min(
+        1,
+        Math.max(0, (anchor - rect.top) / Math.max(rect.height, 1)),
+      )
+      setProgress(p)
+      const dots = wrap.querySelectorAll<HTMLElement>('[data-dot]')
+      setActive(
+        Array.from(dots).map((d) => d.getBoundingClientRect().top <= anchor + 4),
+      )
     }
-  }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
 
-  const ActiveIcon = steps[active].Icon
+  // Otkrivanje koraka kad uđe u vidokrug
+  useEffect(() => {
+    const wrap = timelineRef.current
+    if (!wrap) return
+    const items = wrap.querySelectorAll<HTMLElement>('[data-step]')
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const i = Number((entry.target as HTMLElement).dataset.step)
+            setRevealed((prev) => {
+              if (prev[i]) return prev
+              const next = [...prev]
+              next[i] = true
+              return next
+            })
+          }
+        })
+      },
+      { rootMargin: '0px 0px -20% 0px', threshold: 0.25 },
+    )
+    items.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [])
 
   return (
-    <section
-      aria-labelledby="proces-heading"
-      className="relative px-5 py-20 sm:px-8 sm:py-28"
-    >
-      <div className="mx-auto w-full max-w-6xl">
-        <motion.div
-          variants={container}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: '-80px' }}
-          className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(320px,0.9fr)_1.15fr] lg:items-start lg:gap-16"
-        >
-          {/* LEVO — koraci */}
-          <motion.div variants={item}>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-brand-brown">
-              {t('process.eyebrow')}
-            </span>
-            <h2
-              id="proces-heading"
-              className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-brand-green sm:text-5xl"
-            >
-              {t('process.titlePre')}{' '}
-              <span className="bg-gradient-to-b from-[#5a7a54] via-[#43603f] to-[#354733] bg-clip-text pb-[0.16em] text-transparent">
-                {t('process.titleHighlight')}
-              </span>
-            </h2>
-            <p className="mt-5 max-w-xl leading-relaxed text-brand-brown/80">
-              {t('process.subtitle')}
-            </p>
+    <section className="relative px-5 py-20 sm:px-8 sm:py-28">
+      {/* Zaglavlje — centrirano */}
+      <div className="mx-auto mb-16 max-w-2xl text-center sm:mb-20">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-brand-brown">
+          {t('process.eyebrow')}
+        </span>
+        <h2 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-brand-green sm:text-5xl">
+          {t('process.titlePre')}{' '}
+          <span className="bg-gradient-to-b from-[#5a7a54] via-[#43603f] to-[#354733] bg-clip-text pb-[0.16em] text-transparent">
+            {t('process.titleHighlight')}
+          </span>
+        </h2>
+        <p className="mx-auto mt-5 max-w-xl leading-relaxed text-brand-brown/80">
+          {t('process.subtitle')}
+        </p>
+      </div>
 
-            <div
-              role="tablist"
-              aria-orientation="vertical"
-              aria-label="Koraci procesa"
-              onKeyDown={handleKeyDown}
-              className="mt-8 flex flex-col gap-1.5 lg:mt-10"
-            >
-              {steps.map((step, index) => {
-                const isActive = active === index
-                return (
-                  <button
-                    key={step.key}
-                    ref={(el) => {
-                      tabRefs.current[index] = el
-                    }}
-                    type="button"
-                    role="tab"
-                    id={`proces-tab-${index}`}
-                    aria-selected={isActive}
-                    aria-controls="proces-panel"
-                    tabIndex={isActive ? 0 : -1}
-                    onClick={() => setActive(index)}
-                    className={`relative w-full cursor-pointer rounded-2xl px-4 py-4 text-left transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-brown ${
-                      isActive ? '' : 'hover:bg-brand-brown/5'
+      {/* Vremenska linija — linija po sredini, koraci naizmenično levo/desno */}
+      <div ref={timelineRef} className="relative mx-auto max-w-4xl">
+        {/* Isprekidana linija (mobilno levo, desktop centar) */}
+        <div className="pointer-events-none absolute bottom-8 left-7 top-8 w-0 -translate-x-1/2 border-l-2 border-dashed border-brand-brown/25 md:left-1/2" />
+        {/* Popuna koja raste sa skrolom */}
+        <div
+          className="process-fill pointer-events-none absolute left-7 top-8 w-[3px] -translate-x-1/2 rounded-full bg-brand-brown md:left-1/2"
+          style={{ height: `calc(${progress} * (100% - 4rem))` }}
+        />
+
+        <ol className="relative space-y-10 sm:space-y-14">
+          {steps.map((step, i) => {
+            const even = i % 2 === 0
+            return (
+              <li
+                key={step.key}
+                data-step={i}
+                className={`process-step grid grid-cols-[auto_1fr] items-center gap-x-6 md:grid-cols-[1fr_auto_1fr] md:gap-x-10 ${
+                  revealed[i] ? 'revealed' : ''
+                }`}
+              >
+                {/* Tačka sa ikonicom — na liniji */}
+                <span
+                  data-dot
+                  className={`process-dot col-start-1 flex h-14 w-14 items-center justify-center rounded-full border-2 md:col-start-2 ${
+                    active[i]
+                      ? 'is-active border-brand-brown bg-brand-brown text-brand-cream'
+                      : 'border-brand-brown/30 bg-brand-cream text-brand-brown/50'
+                  }`}
+                >
+                  <step.Icon className="h-6 w-6" />
+                </span>
+
+                {/* Sadržaj — mobilno desno; desktop naizmenično levo/desno */}
+                <div
+                  className={`col-start-2 ${
+                    even
+                      ? 'md:col-start-1 md:pr-10 md:text-right'
+                      : 'md:col-start-3 md:pl-10'
+                  }`}
+                >
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-brand-brown/70">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <h3 className="mt-2 text-xl font-bold text-brand-green sm:text-2xl">
+                    {t(`process.${step.key}.title`)}
+                  </h3>
+                  <p
+                    className={`mt-2 max-w-md leading-relaxed text-brand-brown/80 ${
+                      even ? 'md:ml-auto' : ''
                     }`}
                   >
-                    {isActive && (
-                      <motion.span
-                        layoutId="proces-indicator"
-                        transition={{ duration: 0.4, ease: EASE }}
-                        className="absolute inset-0 rounded-2xl bg-brand-brown/10"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <span className="relative flex items-start gap-4">
-                      <span
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${
-                          isActive
-                            ? 'border-brand-brown bg-brand-brown text-brand-cream'
-                            : 'border-brand-brown/25 text-brand-brown/50'
-                        }`}
-                      >
-                        <step.Icon className="h-5 w-5" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline justify-between gap-3">
-                          <span
-                            className={`text-base font-semibold ${
-                              isActive ? 'text-brand-green' : 'text-brand-brown/60'
-                            }`}
-                          >
-                            {t(`process.${step.key}.title`)}
-                          </span>
-                          <span className="shrink-0 font-mono text-[11px] text-brand-brown/40">
-                            0{index + 1}
-                          </span>
-                        </span>
-                        <AnimatePresence initial={false}>
-                          {isActive && (
-                            <motion.span
-                              key="copy"
-                              initial={
-                                reduce ? { opacity: 0 } : { height: 0, opacity: 0 }
-                              }
-                              animate={
-                                reduce
-                                  ? { opacity: 1 }
-                                  : { height: 'auto', opacity: 1 }
-                              }
-                              exit={
-                                reduce ? { opacity: 0 } : { height: 0, opacity: 0 }
-                              }
-                              transition={{ duration: 0.35, ease: EASE }}
-                              className="block overflow-hidden"
-                            >
-                              <span className="block pt-2 text-sm leading-relaxed text-brand-brown/80">
-                                {t(`process.${step.key}.desc`)}
-                              </span>
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+                    {t(`process.${step.key}.desc`)}
+                  </p>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
 
-            {viewAllHref && (
-              <Link
-                to={viewAllHref}
-                className="mt-8 inline-flex cursor-pointer items-center gap-2 rounded-full text-sm font-semibold text-brand-green transition-colors duration-200 hover:text-brand-brown"
-              >
-                {t('process.viewAll')}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            )}
-          </motion.div>
-
-          {/* DESNO — panel sa ikonicom */}
-          <motion.div variants={item} className="min-w-0">
-            <div className="rounded-3xl border border-[#4a2d19] bg-brand-brown p-2 shadow-[0_30px_70px_-25px_rgba(74,45,25,0.5)]">
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-cream/70">
-                  {t(`process.${steps[active].key}.title`)}
-                </span>
-                <span className="font-mono text-[11px] text-brand-cream/40">
-                  Korak {active + 1} / {steps.length}
-                </span>
-              </div>
-              <div
-                id="proces-panel"
-                role="tabpanel"
-                aria-labelledby={`proces-tab-${active}`}
-                className="min-h-[380px] overflow-hidden rounded-2xl border border-brand-cream/10 bg-black/15 sm:min-h-[420px]"
-              >
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={active}
-                    initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3, ease: EASE }}
-                    className="flex h-full flex-col items-start gap-6 p-7 sm:p-10"
-                  >
-                    <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-cream text-brand-brown shadow-lg">
-                      <ActiveIcon className="h-8 w-8" />
-                    </span>
-                    <div>
-                      <span className="font-mono text-xs text-brand-cream/50">
-                        0{active + 1} / 0{steps.length}
-                      </span>
-                      <h3 className="mt-2 text-2xl font-bold text-brand-cream sm:text-3xl">
-                        {t(`process.${steps[active].key}.title`)}
-                      </h3>
-                      <p className="mt-3 max-w-md leading-relaxed text-brand-cream/80">
-                        {t(`process.${steps[active].key}.desc`)}
-                      </p>
-                    </div>
-
-                    {/* Napredak — tačkice */}
-                    <div className="mt-auto flex items-center gap-2 pt-4">
-                      {steps.map((s, i) => (
-                        <span
-                          key={s.key}
-                          className={`h-1.5 rounded-full transition-all duration-300 ${
-                            i === active
-                              ? 'w-8 bg-brand-cream'
-                              : 'w-1.5 bg-brand-cream/25'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
+        {viewAllHref && (
+          <div className="mt-14 text-center">
+            <Link
+              to={viewAllHref}
+              className="inline-flex items-center gap-2 rounded-full bg-brand-brown px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#7c4e2f]"
+            >
+              {t('process.viewAll')}
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   )

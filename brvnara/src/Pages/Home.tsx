@@ -5,6 +5,7 @@ import Introduce from '../Components/Introduce'
 import ProcessSection from '../Components/ProcessSection'
 import ModelsSection from '../Components/ModelsSection'
 import Packages from './Packages'
+import FaqSection from '../Components/FaqSection'
 
 export default function Home() {
   const { t } = useI18n()
@@ -69,6 +70,9 @@ export default function Home() {
 
       {/* Paketi — sekcija na početnoj */}
       <Packages />
+
+      {/* Česta pitanja */}
+      <FaqSection />
     </>
   )
 }

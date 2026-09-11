@@ -39,6 +39,16 @@ export default function Introduce() {
     return () => io.disconnect()
   }, [])
 
+  // Detekcija telefona (za responsive galeriju)
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const sync = () => setIsMobile(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
   return (
     <section
       ref={sectionRef}
@@ -89,15 +99,19 @@ export default function Introduce() {
 
         {/* Desno — probna kružna galerija */}
         <div className={`intro-right ${visible ? 'in' : ''}`}>
-          <div className="relative h-[580px] w-full">
+          <div
+            className={`relative w-full ${isMobile ? 'h-[380px]' : 'h-[580px]'}`}
+          >
             <CircleGallery
+              key={isMobile ? 'm' : 'd'}
               images={galleryImages}
-              radiusPercent={17}
-              itemWidth={185}
-              itemHeight={250}
+              radiusPercent={isMobile ? 30 : 17}
+              itemWidth={isMobile ? 96 : 185}
+              itemHeight={isMobile ? 132 : 250}
               itemScale={0.9}
               borderRadius={14}
-              autoSpin={22}
+              autoSpin={isMobile ? 18 : 22}
+              enableDrag={!isMobile}
               showNumbers={false}
             />
           </div>
