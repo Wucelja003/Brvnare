@@ -1,13 +1,14 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react'
-import { cn } from '../lib/utils'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Draggable } from 'gsap/Draggable'
 import { InertiaPlugin } from 'gsap/InertiaPlugin'
+import { cn } from '../lib/utils'
 
 gsap.registerPlugin(Draggable, InertiaPlugin)
 
 export interface CircleGalleryProps {
   images?: string[]
+  /** Poluprečnik kruga kao % od manje strane KONTEJNERA (ne viewporta) */
   radiusPercent?: number
   itemWidth?: number
   itemHeight?: number
@@ -17,7 +18,12 @@ export interface CircleGalleryProps {
   throwResistance?: number
   animationDuration?: number
   showNumbers?: boolean
+  /** Stepeni u sekundi (0 = isključeno) */
   autoSpin?: number
+  /** Blago umanjenje/zatamnjenje kartica na „daljoj" strani kruga */
+  depth?: number
+  /** Kartice se stapaju sa pozadinom na levoj i desnoj ivici umesto da budu odsečene */
+  edgeFade?: boolean
   className?: string
   itemClassName?: string
   onItemClick?: (index: number, image: string) => void
@@ -35,418 +41,320 @@ export const CircleGallery: React.FC<CircleGalleryProps> = ({
   animationDuration = 0.9,
   showNumbers = true,
   autoSpin = 0,
+  depth = 0.14,
+  edgeFade = true,
   className,
   itemClassName,
   onItemClick,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const wheelRef = useRef<HTMLDivElement>(null)
+  const proxyRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
   const draggableRef = useRef<Draggable[] | null>(null)
-  const autoSpinRef = useRef<gsap.core.Tween | null>(null)
-  const isDraggingRef = useRef(false)
-  const [isReady, setIsReady] = useState(false)
+  const spinRef = useRef<gsap.core.Tween | null>(null)
+  const introRef = useRef<gsap.core.Timeline | null>(null)
+  const draggingRef = useRef(false)
+  const focusedRef = useRef<number | null>(null)
+  /** rotation = ugao točka u stepenima, radius = trenutni poluprečnik (animira se na ulazu) */
+  const stateRef = useRef({ rotation: 0, radius: 0 })
+
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
+  const total = images.length
 
-  const displayItems = images
-  const totalItems = displayItems.length
+  /** Poluprečnik koji sigurno staje u kontejner — ovo je bio uzrok sečenja na telefonu */
+  const measureRadius = useCallback(() => {
+    const box = containerRef.current?.getBoundingClientRect()
+    if (!box || !box.width || !box.height) return 0
+    const shorter = Math.min(box.width, box.height)
+    const wanted = shorter * (radiusPercent / 100)
+    const maxX = box.width / 2 - (itemWidth * itemScale) / 2
+    const maxY = box.height / 2 - (itemHeight * itemScale) / 2
+    return Math.max(0, Math.min(wanted, maxX, maxY))
+  }, [radiusPercent, itemWidth, itemHeight, itemScale])
 
-  const calculateCirclePositions = useCallback(
-    (animated = false) => {
-      if (!wheelRef.current) return
+  /** Jedan prolaz kroz sve kartice — kartice ostaju uspravne, samo se pomeraju po krugu */
+  const apply = useCallback(() => {
+    if (focusedRef.current !== null) return
+    const { rotation, radius } = stateRef.current
+    const rad = (rotation * Math.PI) / 180
+    const step = (2 * Math.PI) / Math.max(total, 1)
 
-      const viewportDimension = Math.min(window.innerWidth, window.innerHeight)
-      const circleRadius = viewportDimension * (radiusPercent / 100)
-      const fullCircle = 2 * Math.PI
-      const stepAngle = fullCircle / totalItems
-
-      const currentRotation =
-        gsap.getProperty(wheelRef.current, 'rotation') || 0
-      const rotationInRadians = (currentRotation as number) * (Math.PI / 180)
-
-      itemRefs.current.forEach((item, idx) => {
-        if (!item) return
-
-        const angle = idx * stepAngle + rotationInRadians
-        const xPosition = circleRadius * Math.cos(angle)
-        const yPosition = circleRadius * Math.sin(angle)
-
-        if (animated) {
-          gsap.to(item, {
-            x: xPosition,
-            y: yPosition,
-            rotation: -(currentRotation as number),
-            duration: 0.4,
-            ease: 'power2.out',
-          })
-        } else {
-          gsap.set(item, {
-            x: xPosition,
-            y: yPosition,
-            rotation: -(currentRotation as number),
-          })
-        }
-      })
-    },
-    [totalItems, radiusPercent],
-  )
-
-  const setupDraggable = useCallback(() => {
-    if (!wheelRef.current || !enableDrag || focusedIndex !== null) return
-
-    if (draggableRef.current) {
-      draggableRef.current[0]?.kill()
-    }
-
-    const updateItemRotations = function (this: Draggable) {
-      const wheelRotation = this.rotation || 0
-
-      itemRefs.current.forEach((item) => {
-        if (item) {
-          gsap.set(item, {
-            rotation: -wheelRotation,
-          })
-        }
-      })
-    }
-
-    draggableRef.current = Draggable.create(wheelRef.current, {
-      type: 'rotation',
-      inertia: true,
-      throwResistance: throwResistance,
-      onDrag: updateItemRotations,
-      onThrowUpdate: updateItemRotations,
-      onPress: () => {
-        if (autoSpinRef.current) {
-          autoSpinRef.current.kill()
-          autoSpinRef.current = null
-        }
-        isDraggingRef.current = false
-      },
-      onDragStart: () => {
-        isDraggingRef.current = true
-      },
-      onDragEnd: () => {
-        setTimeout(() => {
-          isDraggingRef.current = false
-        }, 50)
-      },
-      trigger: containerRef.current,
-    })
-  }, [enableDrag, throwResistance, focusedIndex])
-
-  const initializeGallery = useCallback(() => {
-    if (!wheelRef.current) return
-
-    const items = itemRefs.current.filter((item) => item !== null)
-
-    const timeline = gsap.timeline({
-      onComplete: () => {
-        setIsReady(true)
-        setupDraggable()
-      },
-    })
-
-    for (let i = 0; i < totalItems; i++) {
-      const item = items[i]
-      const staggerDelay = (totalItems - 1 - i) * 0.1
-
-      timeline.to(
-        item,
-        {
-          opacity: 1,
-          scale: itemScale,
-          duration: 0.5,
-          ease: 'power2.out',
-        },
-        staggerDelay,
-      )
-    }
-
-    const lastAnimationEnd = (totalItems - 1) * 0.1 + 0.5
-    timeline.to({}, { duration: 0.3 }, lastAnimationEnd)
-
-    const viewportDimension = Math.min(window.innerWidth, window.innerHeight)
-    const circleRadius = viewportDimension * (radiusPercent / 100)
-    const fullCircle = 2 * Math.PI
-    const stepAngle = fullCircle / totalItems
-
-    const circleStartTime = lastAnimationEnd + 0.3
-    for (let i = 0; i < totalItems; i++) {
-      const item = items[i]
-      const angle = i * stepAngle
-      const xPosition = circleRadius * Math.cos(angle)
-      const yPosition = circleRadius * Math.sin(angle)
-
-      timeline.to(
-        item,
-        {
-          x: xPosition,
-          y: yPosition,
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          duration: animationDuration,
-          ease: 'power2.inOut',
-        },
-        circleStartTime,
-      )
-    }
-  }, [totalItems, radiusPercent, itemScale, animationDuration, setupDraggable])
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (isReady) {
-        calculateCirclePositions(true)
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [isReady, calculateCirclePositions])
-
-  useEffect(() => {
-    if (isReady) {
-      calculateCirclePositions(true)
-    }
-  }, [radiusPercent, isReady, calculateCirclePositions])
-
-  useEffect(() => {
-    const items = itemRefs.current.filter((item) => item !== null)
-    if (items.length > 0) {
-      gsap.set(items, {
-        x: 0,
-        y: 0,
+    for (let i = 0; i < total; i++) {
+      const el = itemRefs.current[i]
+      if (!el) continue
+      const angle = i * step + rad
+      // 0 = dalja strana kruga, 1 = strana bliža posmatraču (dole)
+      const near = (Math.sin(angle) + 1) / 2
+      gsap.set(el, {
+        x: radius * Math.cos(angle),
+        y: radius * Math.sin(angle),
         rotation: 0,
-        scale: 0,
-        opacity: 0,
-        boxShadow: '0 0 0 rgba(0, 0, 0, 0)',
+        scale: itemScale * (1 - depth + depth * near),
+        force3D: true,
       })
+      const z = 100 + Math.round(near * 60)
+      if (el.style.zIndex !== String(z)) el.style.zIndex = String(z)
     }
-  }, [])
+  }, [total, itemScale, depth])
 
+  /** Uvodna animacija: kartice se pojave u centru pa razlete u krug */
   useEffect(() => {
-    const timer = setTimeout(() => {
-      initializeGallery()
-    }, 50)
+    const items = itemRefs.current.slice(0, total).filter(Boolean)
+    if (!items.length) return
 
-    return () => clearTimeout(timer)
+    gsap.set(items, {
+      xPercent: -50,
+      yPercent: -50,
+      x: 0,
+      y: 0,
+      rotation: 0,
+      scale: 0.2,
+      opacity: 0,
+      force3D: true,
+    })
+    stateRef.current.radius = 0
+
+    const tl = gsap.timeline()
+    introRef.current = tl
+    tl.to(items, {
+      opacity: 1,
+      duration: 0.45,
+      ease: 'power2.out',
+      stagger: 0.05,
+    })
+    tl.to(
+      stateRef.current,
+      {
+        radius: measureRadius(),
+        duration: animationDuration,
+        ease: 'power3.inOut',
+        onUpdate: apply,
+      },
+      '-=0.15',
+    )
+
+    return () => {
+      tl.kill()
+      introRef.current = null
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [total])
 
+  /** Promena veličine kontejnera → novi poluprečnik */
   useEffect(() => {
-    if (focusedIndex !== null && draggableRef.current) {
-      draggableRef.current[0]?.kill()
-      draggableRef.current = null
-    } else if (focusedIndex === null && isReady && enableDrag) {
-      setupDraggable()
-    }
-  }, [focusedIndex, isReady, enableDrag, setupDraggable])
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      if (introRef.current?.isActive()) return
+      stateRef.current.radius = measureRadius()
+      apply()
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [measureRadius, apply])
 
+  /** Neprekidna rotacija */
   useEffect(() => {
-    if (
-      !isReady ||
-      !wheelRef.current ||
-      autoSpin === 0 ||
-      focusedIndex !== null
-    ) {
-      if (autoSpinRef.current) {
-        autoSpinRef.current.kill()
-        autoSpinRef.current = null
-      }
-      return
-    }
-
-    const currentRotation =
-      (gsap.getProperty(wheelRef.current, 'rotation') as number) || 0
-
-    autoSpinRef.current = gsap.to(wheelRef.current, {
-      rotation: currentRotation + (autoSpin > 0 ? 360 : -360),
+    if (!autoSpin || focusedIndex !== null) return
+    const spin = gsap.to(stateRef.current, {
+      rotation: `+=${autoSpin > 0 ? 360 : -360}`,
       duration: Math.abs(360 / autoSpin),
       ease: 'none',
       repeat: -1,
-      onUpdate: function () {
-        const wheelRotation =
-          gsap.getProperty(wheelRef.current, 'rotation') || 0
-        itemRefs.current.forEach((item) => {
-          if (item) {
-            gsap.set(item, {
-              rotation: -(wheelRotation as number),
-            })
-          }
-        })
+      onUpdate: apply,
+    })
+    spinRef.current = spin
+    return () => {
+      spin.kill()
+      spinRef.current = null
+    }
+  }, [autoSpin, focusedIndex, apply])
+
+  /** Prevlačenje — rotira nevidljivi proxy, kartice prate njegov ugao */
+  useEffect(() => {
+    if (!enableDrag || focusedIndex !== null || !proxyRef.current) return
+
+    const onSpin = function (this: Draggable) {
+      stateRef.current.rotation = this.rotation
+      apply()
+    }
+
+    const instances = Draggable.create(proxyRef.current, {
+      type: 'rotation',
+      trigger: containerRef.current,
+      inertia: true,
+      throwResistance,
+      allowNativeTouchScrolling: true,
+      onPress: () => {
+        spinRef.current?.pause()
+        draggingRef.current = false
+      },
+      onDragStart: () => {
+        draggingRef.current = true
+      },
+      onDrag: onSpin,
+      onThrowUpdate: onSpin,
+      onDragEnd: () => {
+        window.setTimeout(() => {
+          draggingRef.current = false
+        }, 60)
+      },
+      onThrowComplete: () => {
+        spinRef.current?.resume()
+      },
+      onRelease: () => {
+        if (!draggingRef.current) spinRef.current?.resume()
       },
     })
+    draggableRef.current = instances
+    gsap.set(proxyRef.current, { rotation: stateRef.current.rotation })
 
     return () => {
-      if (autoSpinRef.current) {
-        autoSpinRef.current.kill()
-        autoSpinRef.current = null
-      }
+      instances.forEach((d) => d.kill())
+      draggableRef.current = null
     }
-  }, [isReady, autoSpin, focusedIndex])
+  }, [enableDrag, throwResistance, focusedIndex, apply])
 
-  useEffect(() => {
-    return () => {
-      if (draggableRef.current) {
-        draggableRef.current[0]?.kill()
-      }
-      if (autoSpinRef.current) {
-        autoSpinRef.current.kill()
-      }
-      gsap.killTweensOf(wheelRef.current)
-      gsap.killTweensOf(itemRefs.current)
-    }
-  }, [])
+  /** Uvećanje jedne kartice na klik */
+  const focusItem = (index: number | null) => {
+    focusedRef.current = index
+    setFocusedIndex(index)
 
-  const handleItemClick = (index: number, image: string) => {
-    if (isDraggingRef.current) return
-
-    if (focusedIndex !== null && focusedIndex !== index) {
+    if (index === null) {
+      const { rotation, radius } = stateRef.current
+      const rad = (rotation * Math.PI) / 180
+      const step = (2 * Math.PI) / Math.max(total, 1)
+      itemRefs.current.slice(0, total).forEach((el, i) => {
+        if (!el) return
+        const angle = i * step + rad
+        const near = (Math.sin(angle) + 1) / 2
+        gsap.to(el, {
+          x: radius * Math.cos(angle),
+          y: radius * Math.sin(angle),
+          rotation: 0,
+          scale: itemScale * (1 - depth + depth * near),
+          filter: 'blur(0px)',
+          opacity: 1,
+          duration: 0.55,
+          ease: 'power2.inOut',
+        })
+      })
       return
     }
 
-    if (focusedIndex === index) {
-      setFocusedIndex(null)
-
-      const viewportDimension = Math.min(window.innerWidth, window.innerHeight)
-      const circleRadius = viewportDimension * (radiusPercent / 100)
-      const fullCircle = 2 * Math.PI
-      const stepAngle = fullCircle / totalItems
-      const currentRotation =
-        gsap.getProperty(wheelRef.current, 'rotation') || 0
-      const rotationInRadians = (currentRotation as number) * (Math.PI / 180)
-
-      itemRefs.current.forEach((item, idx) => {
-        if (item) {
-          const angle = idx * stepAngle + rotationInRadians
-          const xPosition = circleRadius * Math.cos(angle)
-          const yPosition = circleRadius * Math.sin(angle)
-
-          gsap.to(item, {
-            x: xPosition,
-            y: yPosition,
-            scale: itemScale,
-            zIndex: 100 + idx,
-            filter: 'blur(0px)',
-            duration: 0.6,
-            ease: 'power2.inOut',
-          })
-        }
-      })
-    } else {
-      setFocusedIndex(index)
-
-      itemRefs.current.forEach((item, idx) => {
-        if (item) {
-          if (idx === index) {
-            gsap.to(item, {
-              x: 0,
-              y: 0,
-              scale: itemScale * 1.8,
-              zIndex: 1000,
-              filter: 'blur(0px)',
-              duration: 0.6,
-              ease: 'power2.out',
-            })
-          } else {
-            gsap.to(item, {
-              scale: itemScale * 0.85,
-              filter: 'blur(5px)',
-              duration: 0.6,
-              ease: 'power2.inOut',
-            })
-          }
-        }
-      })
-    }
-
-    if (onItemClick) {
-      onItemClick(index, image)
-    }
+    itemRefs.current.slice(0, total).forEach((el, i) => {
+      if (!el) return
+      if (i === index) {
+        gsap.to(el, {
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scale: itemScale * 1.7,
+          zIndex: 1000,
+          filter: 'blur(0px)',
+          opacity: 1,
+          duration: 0.55,
+          ease: 'power3.out',
+        })
+      } else {
+        gsap.to(el, {
+          scale: itemScale * 0.8,
+          opacity: 0.35,
+          filter: 'blur(3px)',
+          duration: 0.55,
+          ease: 'power2.inOut',
+        })
+      }
+    })
   }
 
-  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (focusedIndex !== null && e.target === containerRef.current) {
-      setFocusedIndex(null)
-
-      const viewportDimension = Math.min(window.innerWidth, window.innerHeight)
-      const circleRadius = viewportDimension * (radiusPercent / 100)
-      const fullCircle = 2 * Math.PI
-      const stepAngle = fullCircle / totalItems
-      const currentRotation =
-        gsap.getProperty(wheelRef.current, 'rotation') || 0
-      const rotationInRadians = (currentRotation as number) * (Math.PI / 180)
-
-      itemRefs.current.forEach((item, idx) => {
-        if (item) {
-          const angle = idx * stepAngle + rotationInRadians
-          const xPosition = circleRadius * Math.cos(angle)
-          const yPosition = circleRadius * Math.sin(angle)
-
-          gsap.to(item, {
-            x: xPosition,
-            y: yPosition,
-            scale: itemScale,
-            zIndex: 100 + idx,
-            filter: 'blur(0px)',
-            duration: 0.6,
-            ease: 'power2.inOut',
-          })
-        }
-      })
-    }
+  const handleItemClick = (index: number, image: string) => {
+    if (draggingRef.current) return
+    if (focusedIndex !== null && focusedIndex !== index) return
+    focusItem(focusedIndex === index ? null : index)
+    onItemClick?.(index, image)
   }
+
+  useEffect(
+    () => () => {
+      gsap.killTweensOf(stateRef.current)
+      itemRefs.current.forEach((el) => el && gsap.killTweensOf(el))
+    },
+    [],
+  )
 
   return (
     <div
       ref={containerRef}
+      onClick={(e) => {
+        if (focusedIndex !== null && e.target === containerRef.current)
+          focusItem(null)
+      }}
       className={cn(
         'relative flex h-full w-full items-center justify-center overflow-hidden',
-        enableDrag && !focusedIndex && 'cursor-grab active:cursor-grabbing',
+        enableDrag && focusedIndex === null && 'cursor-grab active:cursor-grabbing',
         className,
       )}
-      style={{ perspective: '2200px' }}
-      onClick={handleContainerClick}
+      style={{
+        touchAction: 'pan-y',
+        ...(edgeFade
+          ? {
+              maskImage:
+                'linear-gradient(90deg, transparent 0%, #000 9%, #000 91%, transparent 100%)',
+              WebkitMaskImage:
+                'linear-gradient(90deg, transparent 0%, #000 9%, #000 91%, transparent 100%)',
+            }
+          : null),
+      }}
     >
-      <div
-        ref={wheelRef}
-        className={cn(
-          'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-        )}
-        style={{ transformOrigin: 'center center' }}
-      >
-        {displayItems.map((image, index) => (
-          <div
-            key={index}
-            ref={(el) => {
-              itemRefs.current[index] = el
-            }}
-            className={cn(
-              'absolute -translate-x-1/2 -translate-y-1/2 overflow-hidden cursor-pointer select-none transition-shadow duration-300',
-              focusedIndex === index && 'ring-4 ring-brand-cream/60',
-              itemClassName,
-            )}
-            style={{
-              width: `${itemWidth}px`,
-              height: `${itemHeight}px`,
-              borderRadius: `${borderRadius}px`,
-              transformOrigin: 'center center',
-              background:
-                image.startsWith('linear-gradient') ||
-                image.startsWith('radial-gradient')
-                  ? image
-                  : `url(${image})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-            onClick={() => handleItemClick(index, image)}
-          >
-            {showNumbers && (
-              <div className="absolute top-2 left-2 text-white/80 text-sm font-bold z-10 drop-shadow-md">
-                {String(index + 1).padStart(3, '0')}
-              </div>
-            )}
-          </div>
-        ))}
+      {/* Nevidljivi element koji Draggable rotira */}
+      <div ref={proxyRef} className="pointer-events-none absolute h-px w-px opacity-0" />
+
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-0 w-0">
+        {images.map((image, index) => {
+          const isGradient =
+            image.startsWith('linear-gradient') ||
+            image.startsWith('radial-gradient')
+          return (
+            <div
+              key={image + index}
+              ref={(el) => {
+                itemRefs.current[index] = el
+              }}
+              onClick={() => handleItemClick(index, image)}
+              className={cn(
+                'pointer-events-auto absolute cursor-pointer select-none overflow-hidden shadow-[0_18px_40px_-18px_rgba(53,71,51,0.55)]',
+                focusedIndex === index && 'ring-2 ring-brand-cream/70',
+                itemClassName,
+              )}
+              style={{
+                width: itemWidth,
+                height: itemHeight,
+                borderRadius,
+                transformOrigin: 'center center',
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
+                background: isGradient ? image : undefined,
+              }}
+            >
+              {!isGradient && (
+                <img
+                  src={image}
+                  alt=""
+                  draggable={false}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+              )}
+              {showNumbers && (
+                <span className="absolute left-2 top-2 z-10 text-sm font-bold text-white/80 drop-shadow-md">
+                  {String(index + 1).padStart(3, '0')}
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

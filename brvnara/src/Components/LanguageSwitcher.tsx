@@ -39,7 +39,7 @@ export default function LanguageSwitcher({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Izbor jezika"
-        className={`group flex h-[52px] cursor-pointer items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5 shadow-[0_12px_34px_-16px_rgba(53,71,51,0.45)] backdrop-blur-xl transition-colors duration-300 ${
+        className={`group flex h-[52px] cursor-pointer items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-2.5 lg:pr-3.5 shadow-[0_12px_34px_-16px_rgba(53,71,51,0.45)] backdrop-blur-xl transition-colors duration-300 ${
           open
             ? 'border-brand-brown/35 bg-brand-cream'
             : 'border-brand-brown/15 bg-brand-cream/85 hover:border-brand-brown/30 hover:bg-brand-cream'
@@ -49,7 +49,7 @@ export default function LanguageSwitcher({
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-brown/10 text-[17px] leading-none transition-transform duration-300 group-hover:scale-105">
           {current.flag}
         </span>
-        <span className="text-[13px] font-bold uppercase tracking-[0.14em] text-brand-brown">
+        <span className="hidden text-[13px] font-bold uppercase tracking-[0.14em] text-brand-brown lg:inline">
           {current.code}
         </span>
         <motion.svg

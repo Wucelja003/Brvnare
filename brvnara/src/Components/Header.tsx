@@ -18,7 +18,7 @@ import ScrollProgress from './nav/ScrollProgress'
 const PRIMARY_LINKS = [
   { key: 'nav.process', to: '/proces' },
   { key: 'nav.models', to: '/modeli' },
-  { key: 'nav.packages', to: '/#paketi' },
+  { key: 'nav.packages', to: '/paketi' },
   { key: 'nav.contact', to: '/kontakt' },
 ]
 
@@ -29,7 +29,7 @@ const SOCIAL_LINKS = [
 ]
 
 const CLOSED_WIDTH_DESKTOP = 208
-const CLOSED_WIDTH_MOBILE = 132
+const CLOSED_WIDTH_MOBILE = 178
 const OPEN_WIDTH = 300
 const CONTENT_WIDTH = OPEN_WIDTH - 16
 
@@ -149,7 +149,7 @@ export default function Header() {
               }`}
             />
             <span
-              className={`text-[13px] font-bold uppercase tracking-[0.26em] transition-colors duration-300 sm:text-[15px] ${
+              className={`hidden text-[15px] font-bold uppercase tracking-[0.26em] transition-colors duration-300 lg:inline ${
                 onVideo
                   ? 'text-brand-cream drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]'
                   : 'text-brand-brown'
@@ -160,7 +160,7 @@ export default function Header() {
           </Link>
 
           {/* Centralna kapsula — meni koji se širi */}
-          <div className="absolute right-4 top-2.5 z-50 sm:right-6 lg:right-auto lg:left-1/2 lg:-translate-x-1/2">
+          <div className="absolute left-1/2 top-2.5 z-50 -translate-x-1/2">
             <motion.div
               initial={false}
               animate={{ width: menuOpen ? OPEN_WIDTH : closedWidth }}
@@ -179,7 +179,7 @@ export default function Header() {
 
               <div className="relative">
                 <div
-                  className={`flex h-[52px] w-full items-center justify-end gap-2 rounded-full px-1.5 text-brand-brown lg:justify-between lg:pr-2 ${
+                  className={`flex h-[52px] w-full items-center justify-between gap-2 rounded-full py-1.5 pl-1.5 pr-2 text-brand-brown ${
                     menuOpen ? '' : SURFACE
                   }`}
                 >
@@ -194,7 +194,7 @@ export default function Header() {
                     <MenuIcon open={menuOpen} />
                     <MorphLabel value={menuOpen ? t('nav.close') : t('nav.menu')} />
                   </button>
-                  {isDesktop && <ScrollProgress />}
+                  <ScrollProgress />
                 </div>
 
                 <AnimatePresence initial={false}>
@@ -251,20 +251,8 @@ export default function Header() {
                             className="my-6 h-px w-full bg-brand-brown/15"
                           />
 
-                          {/* Jezik — na telefonu (na desktopu je u zaglavlju) */}
-                          <motion.div
-                            custom={6}
-                            variants={ITEM_VARIANTS}
-                            className="flex flex-col gap-2.5 lg:hidden"
-                          >
-                            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-brown/50">
-                              {t('nav.language')}
-                            </span>
-                            <LanguageSwitcher align="left" />
-                          </motion.div>
-
                           {/* Društvene mreže */}
-                          <div className="mt-7 flex flex-col gap-3">
+                          <div className="flex flex-col gap-3">
                             <motion.span
                               custom={7}
                               variants={ITEM_VARIANTS}
@@ -304,10 +292,16 @@ export default function Header() {
             </motion.div>
           </div>
 
-          {/* Jezik + upit (desktop) */}
-          <div className="hidden items-center gap-2.5 lg:flex">
+          {/* Jezik (uvek) + upit (desktop) */}
+          <div
+            className={`flex items-center gap-2.5 transition-opacity duration-300 lg:opacity-100 ${
+              menuOpen ? 'pointer-events-none opacity-0 lg:pointer-events-auto' : ''
+            }`}
+          >
             <LanguageSwitcher />
-            <InquiryButton />
+            <div className="hidden lg:block">
+              <InquiryButton />
+            </div>
           </div>
         </div>
 

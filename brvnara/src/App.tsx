@@ -6,6 +6,7 @@ import IntroOverlay from './Components/IntroOverlay'
 import Home from './Pages/Home'
 import ProcessPage from './Pages/ProcessPage'
 import ModelsPage from './Pages/ModelsPage'
+import PackagesPage from './Pages/PackagesPage'
 import Contact from './Pages/Contact'
 
 // three.js je težak — učitava se kao zaseban chunk
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/proces" element={<ProcessPage />} />
           <Route path="/modeli" element={<ModelsPage />} />
+          <Route path="/paketi" element={<PackagesPage />} />
           <Route path="/kontakt" element={<Contact />} />
         </Routes>
       </main>

@@ -95,7 +95,7 @@ export default function Footer() {
                 variants={itemVariants}
                 className="flex flex-wrap items-center justify-center gap-3 text-sm font-semibold uppercase tracking-wide text-brand-cream sm:gap-4"
               >
-                <Link to="/#paketi" className="transition-colors hover:text-brand-cream/70">
+                <Link to="/paketi" className="transition-colors hover:text-brand-cream/70">
                   {t('nav.packages')}
                 </Link>
                 <span className="text-brand-cream/40">—</span>

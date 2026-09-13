@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'motion/react'
 import { useI18n } from '../i18n/LanguageContext'
+import { packagePlans } from '../data/packages'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
 interface Plan {
-  nameKey: string
+  name: string
   pricePerM2: string
   tagline: string
   lead: string
@@ -14,54 +15,15 @@ interface Plan {
   features: string[]
 }
 
-// Placeholder sadržaj (tekst i cene menjamo kasnije)
-const plans: Plan[] = [
-  {
-    nameKey: 'pkg.cabin.name',
-    pricePerM2: 'od 350 €/m²',
-    tagline: 'Idealna vikendica za odmor i kraće boravke.',
-    lead: 'Uključeno:',
-    cta: 'Izaberi Vikendicu',
-    features: [
-      'Drvena konstrukcija od sušenog drveta',
-      'Krov i termoizolacija',
-      'Osnovno kupatilo',
-      'Terasa (opciono)',
-      'Idejni 3D projekat',
-      'Dostava i montaža',
-    ],
-  },
-  {
-    nameKey: 'pkg.family.name',
-    pricePerM2: 'od 550 €/m²',
-    tagline: 'Prostrana brvnara za celu porodicu.',
-    lead: 'Sve iz Vikendice, plus:',
-    cta: 'Izaberi Porodičnu',
-    features: [
-      'Veća kvadratura i raspored po meri',
-      'Opremljena kuhinja',
-      'Dva kupatila',
-      'Kvalitetnija izolacija',
-      'Terasa u ceni',
-      'Podno grejanje (opciono)',
-    ],
-  },
-  {
-    nameKey: 'pkg.premium.name',
-    pricePerM2: 'od 800 €/m²',
-    tagline: 'Vrhunska brvnara po meri, do najsitnijeg detalja.',
-    lead: 'Sve iz Porodične, plus:',
-    cta: 'Izaberi Premium',
-    features: [
-      'Nameštaj po meri',
-      'Pametna kuća (smart home)',
-      'Premium materijali i završna obrada',
-      'Podno grejanje',
-      'Garancija 10 godina',
-      'Dedicirani projekt menadžer',
-    ],
-  },
-]
+// Isti izvor podataka kao i strana „Naši paketi" (src/data/packages.ts)
+const plans: Plan[] = packagePlans.map((p) => ({
+  name: p.name,
+  pricePerM2: `od ${p.pricePerM2}/m²`,
+  tagline: p.tagline,
+  lead: 'Uključeno u paket:',
+  cta: `Izaberi ${p.name}`,
+  features: p.features,
+}))
 
 function Check({ className = '' }: { className?: string }) {
   return (
@@ -128,7 +90,7 @@ export default function Packages() {
               const selected = active === index
               return (
                 <motion.button
-                  key={option.nameKey}
+                  key={option.name}
                   variants={item}
                   type="button"
                   aria-pressed={selected}
@@ -162,7 +124,7 @@ export default function Packages() {
                     <span className="flex-1">
                       <span className="flex flex-wrap items-baseline justify-between gap-2">
                         <span className="text-lg font-bold text-brand-green">
-                          {t(option.nameKey)}
+                          {option.name}
                         </span>
                         <span className="text-sm font-bold text-brand-brown">
                           {option.pricePerM2}
@@ -185,14 +147,14 @@ export default function Packages() {
           >
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
-                key={plan.nameKey}
+                key={plan.name}
                 initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: reduceMotion ? 0 : -10 }}
                 transition={{ duration: reduceMotion ? 0 : 0.25, ease: EASE }}
               >
                 <h3 className="text-2xl font-bold tracking-tight text-brand-cream sm:text-3xl">
-                  {t(plan.nameKey)}
+                  {plan.name}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">
                   {plan.tagline}
@@ -235,6 +197,21 @@ export default function Packages() {
             </AnimatePresence>
           </motion.div>
         </div>
+
+        <motion.div variants={item} className="mt-10 text-center">
+          <Link
+            to="/paketi"
+            className="group inline-flex items-center gap-2 rounded-full border border-brand-brown/25 bg-[#faf6ec]/70 px-7 py-3.5 text-sm font-semibold text-brand-brown backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-brown/50 hover:bg-[#f8f1e0]"
+          >
+            Uporedite pakete u detalje
+            <span
+              aria-hidden="true"
+              className="transition-transform duration-300 group-hover:translate-x-1"
+            >
+              →
+            </span>
+          </Link>
+        </motion.div>
       </motion.div>
     </section>
   )

@@ -100,17 +100,17 @@ export default function Introduce() {
         {/* Desno — probna kružna galerija */}
         <div className={`intro-right ${visible ? 'in' : ''}`}>
           <div
-            className={`relative w-full ${isMobile ? 'h-[380px]' : 'h-[580px]'}`}
+            className={`relative w-full ${isMobile ? 'h-[400px]' : 'h-[580px]'}`}
           >
             <CircleGallery
               key={isMobile ? 'm' : 'd'}
               images={galleryImages}
-              radiusPercent={isMobile ? 30 : 17}
-              itemWidth={isMobile ? 96 : 185}
-              itemHeight={isMobile ? 132 : 250}
+              radiusPercent={isMobile ? 40 : 26}
+              itemWidth={isMobile ? 104 : 185}
+              itemHeight={isMobile ? 142 : 250}
               itemScale={0.9}
               borderRadius={14}
-              autoSpin={isMobile ? 18 : 22}
+              autoSpin={isMobile ? 16 : 22}
               enableDrag={!isMobile}
               showNumbers={false}
             />
