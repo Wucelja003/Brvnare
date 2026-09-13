@@ -1,78 +1,54 @@
-/* Eyebrow linija koja "prelazi" */
-.process-hline {
-  position: relative;
-  height: 2px;
-  width: 6rem;
-  border-radius: 9999px;
-  overflow: hidden;
-  background: rgba(107, 66, 38, 0.18);
+/* Isprekidana vertikalna šina */
+.process-rail {
+  background-image: linear-gradient(
+    to bottom,
+    rgba(107, 66, 38, 0.3) 0 7px,
+    transparent 7px 15px
+  );
+  background-size: 2px 15px;
+  background-repeat: repeat-y;
 }
 
-.process-hline::after {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 40%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, #6b4226, transparent);
-  animation: process-sweep-x 2.8s ease-in-out infinite;
-}
-
-@keyframes process-sweep-x {
-  0% {
-    transform: translateX(-120%);
-  }
-  55%,
-  100% {
-    transform: translateX(300%);
-  }
-}
-
-/* Otkrivanje koraka pri skrolu */
-.process-step {
-  opacity: 0;
-  transform: translateY(26px);
-  transition:
-    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.process-step.revealed {
-  opacity: 1;
-  transform: none;
-}
-
-/* Popuna vertikalne linije prati skrol (visinu postavlja JS) */
+/* Popuna šine prati skrol (visinu postavlja JS) */
 .process-fill {
-  transition: height 0.12s linear;
+  transition: height 0.15s linear;
+  box-shadow: 0 0 18px rgba(107, 66, 38, 0.35);
 }
 
-/* Tačka koja se "upali" kad je linija dostigne */
+/* Tačka sa brojem koraka */
 .process-dot {
   transition:
-    background-color 0.35s ease,
-    border-color 0.35s ease,
-    color 0.35s ease,
-    box-shadow 0.35s ease,
-    transform 0.35s ease;
+    background-color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .process-dot.is-active {
-  transform: scale(1.06);
-  box-shadow: 0 0 0 6px rgba(107, 66, 38, 0.12);
+  box-shadow: 0 0 0 8px rgba(107, 66, 38, 0.1);
+}
+
+/* Kartica koraka */
+.process-card {
+  transition:
+    border-color 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.process-card:hover {
+  transform: translateY(-4px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .process-hline::after {
-    animation: none;
-  }
-  .process-step {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
   .process-fill,
-  .process-dot {
+  .process-dot,
+  .process-card {
     transition: none;
+  }
+  .process-card:hover {
+    transform: none;
   }
 }

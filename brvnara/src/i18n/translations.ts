@@ -14,6 +14,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     'nav.about': 'O nama',
     'nav.gallery': 'Modeli Kuća',
     'nav.contact': 'Kontakt',
+    'nav.inquiry': 'Pošaljite upit',
+    'nav.menu': 'Meni',
+    'nav.close': 'Zatvori',
+    'nav.language': 'Jezik',
+    'nav.social': 'Društvene mreže',
 
     'home.title': 'Vaša brvnara iz snova',
     'home.subtitle':
@@ -104,6 +109,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     'nav.about': 'About us',
     'nav.gallery': 'Gallery',
     'nav.contact': 'Contact',
+    'nav.inquiry': 'Send an inquiry',
+    'nav.menu': 'Menu',
+    'nav.close': 'Close',
+    'nav.language': 'Language',
+    'nav.social': 'Social media',
 
     'home.title': 'Your dream log cabin',
     'home.subtitle':
@@ -194,6 +204,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     'nav.about': 'Über uns',
     'nav.gallery': 'Galerie',
     'nav.contact': 'Kontakt',
+    'nav.inquiry': 'Anfrage senden',
+    'nav.menu': 'Menü',
+    'nav.close': 'Schließen',
+    'nav.language': 'Sprache',
+    'nav.social': 'Soziale Medien',
 
     'home.title': 'Ihr Traum-Blockhaus',
     'home.subtitle':

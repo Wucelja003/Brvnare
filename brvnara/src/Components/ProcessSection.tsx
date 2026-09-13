@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
+import { motion, useReducedMotion } from 'motion/react'
 import { useI18n } from '../i18n/LanguageContext'
+import { softEase } from '../lib/motion'
 import './ProcessSection.css'
 
 const iconBase: SVGProps<SVGSVGElement> = {
@@ -61,14 +63,12 @@ export default function ProcessSection({
   viewAllHref?: string
 }) {
   const { t } = useI18n()
+  const reduce = useReducedMotion()
   const timelineRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(0)
   const [active, setActive] = useState<boolean[]>(() => steps.map(() => false))
-  const [revealed, setRevealed] = useState<boolean[]>(() =>
-    steps.map(() => false),
-  )
 
-  // Popuna linije + aktivne tačke prate skrol
+  // Popuna šine i aktivne tačke prate skrol
   useEffect(() => {
     const wrap = timelineRef.current
     if (!wrap) return
@@ -76,8 +76,7 @@ export default function ProcessSection({
     const update = () => {
       raf = 0
       const rect = wrap.getBoundingClientRect()
-      const vh = window.innerHeight || 800
-      const anchor = vh * 0.5
+      const anchor = (window.innerHeight || 800) * 0.55
       const p = Math.min(
         1,
         Math.max(0, (anchor - rect.top) / Math.max(rect.height, 1)),
@@ -85,7 +84,10 @@ export default function ProcessSection({
       setProgress(p)
       const dots = wrap.querySelectorAll<HTMLElement>('[data-dot]')
       setActive(
-        Array.from(dots).map((d) => d.getBoundingClientRect().top <= anchor + 4),
+        Array.from(dots).map((d) => {
+          const r = d.getBoundingClientRect()
+          return r.top + r.height / 2 <= anchor + 2
+        }),
       )
     }
     const onScroll = () => {
@@ -101,35 +103,10 @@ export default function ProcessSection({
     }
   }, [])
 
-  // Otkrivanje koraka kad uđe u vidokrug
-  useEffect(() => {
-    const wrap = timelineRef.current
-    if (!wrap) return
-    const items = wrap.querySelectorAll<HTMLElement>('[data-step]')
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const i = Number((entry.target as HTMLElement).dataset.step)
-            setRevealed((prev) => {
-              if (prev[i]) return prev
-              const next = [...prev]
-              next[i] = true
-              return next
-            })
-          }
-        })
-      },
-      { rootMargin: '0px 0px -20% 0px', threshold: 0.25 },
-    )
-    items.forEach((el) => io.observe(el))
-    return () => io.disconnect()
-  }, [])
-
   return (
     <section className="relative px-5 py-20 sm:px-8 sm:py-28">
-      {/* Zaglavlje — centrirano */}
-      <div className="mx-auto mb-16 max-w-2xl text-center sm:mb-20">
+      {/* Zaglavlje */}
+      <div className="mx-auto mb-14 max-w-2xl text-center sm:mb-20">
         <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-brand-brown">
           {t('process.eyebrow')}
         </span>
@@ -144,61 +121,76 @@ export default function ProcessSection({
         </p>
       </div>
 
-      {/* Vremenska linija — linija po sredini, koraci naizmenično levo/desno */}
-      <div ref={timelineRef} className="relative mx-auto max-w-4xl">
-        {/* Isprekidana linija (mobilno levo, desktop centar) */}
-        <div className="pointer-events-none absolute bottom-8 left-7 top-8 w-0 -translate-x-1/2 border-l-2 border-dashed border-brand-brown/25 md:left-1/2" />
+      {/* Vremenska linija — šina po sredini, kartice naizmenično levo/desno */}
+      <div ref={timelineRef} className="relative mx-auto max-w-5xl">
+        {/* Šina */}
+        <div className="process-rail pointer-events-none absolute bottom-10 left-[27px] top-10 w-0.5 -translate-x-1/2 md:left-1/2" />
         {/* Popuna koja raste sa skrolom */}
         <div
-          className="process-fill pointer-events-none absolute left-7 top-8 w-[3px] -translate-x-1/2 rounded-full bg-brand-brown md:left-1/2"
-          style={{ height: `calc(${progress} * (100% - 4rem))` }}
+          className="process-fill pointer-events-none absolute left-[27px] top-10 w-0.5 -translate-x-1/2 rounded-full bg-brand-brown md:left-1/2"
+          style={{ height: `calc(${progress} * (100% - 5rem))` }}
         />
 
-        <ol className="relative space-y-10 sm:space-y-14">
+        <ol className="relative space-y-5 sm:space-y-7">
           {steps.map((step, i) => {
             const even = i % 2 === 0
+            const isActive = active[i]
             return (
-              <li
-                key={step.key}
-                data-step={i}
-                className={`process-step grid grid-cols-[auto_1fr] items-center gap-x-6 md:grid-cols-[1fr_auto_1fr] md:gap-x-10 ${
-                  revealed[i] ? 'revealed' : ''
-                }`}
-              >
-                {/* Tačka sa ikonicom — na liniji */}
+              <li key={step.key} className="relative md:grid md:grid-cols-2">
+                {/* Tačka sa brojem — tačno na šini */}
                 <span
                   data-dot
-                  className={`process-dot col-start-1 flex h-14 w-14 items-center justify-center rounded-full border-2 md:col-start-2 ${
-                    active[i]
+                  className={`process-dot absolute left-[27px] top-10 z-10 flex h-[54px] w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-[13px] font-bold md:left-1/2 md:top-1/2 ${
+                    isActive
                       ? 'is-active border-brand-brown bg-brand-brown text-brand-cream'
-                      : 'border-brand-brown/30 bg-brand-cream text-brand-brown/50'
+                      : 'border-brand-brown/20 bg-[#faf6ec] text-brand-brown/45'
                   }`}
                 >
-                  <step.Icon className="h-6 w-6" />
+                  {String(i + 1).padStart(2, '0')}
                 </span>
 
-                {/* Sadržaj — mobilno desno; desktop naizmenično levo/desno */}
-                <div
-                  className={`col-start-2 ${
-                    even
-                      ? 'md:col-start-1 md:pr-10 md:text-right'
-                      : 'md:col-start-3 md:pl-10'
+                <motion.div
+                  initial={reduce ? false : { opacity: 0, y: 28 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.6, ease: softEase }}
+                  className={`pl-16 sm:pl-20 md:pl-0 ${
+                    even ? 'md:col-start-1 md:pr-16' : 'md:col-start-2 md:pl-16'
                   }`}
                 >
-                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-brand-brown/70">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <h3 className="mt-2 text-xl font-bold text-brand-green sm:text-2xl">
-                    {t(`process.${step.key}.title`)}
-                  </h3>
-                  <p
-                    className={`mt-2 max-w-md leading-relaxed text-brand-brown/80 ${
-                      even ? 'md:ml-auto' : ''
+                  <div
+                    className={`process-card group relative overflow-hidden rounded-[28px] border p-6 backdrop-blur-sm sm:p-7 ${
+                      isActive
+                        ? 'border-brand-brown/35 bg-[#f8f1e0] shadow-[0_26px_60px_-30px_rgba(53,71,51,0.6)]'
+                        : 'border-brand-brown/12 bg-[#faf6ec]/75 shadow-[0_18px_44px_-30px_rgba(53,71,51,0.5)]'
                     }`}
                   >
-                    {t(`process.${step.key}.desc`)}
-                  </p>
-                </div>
+                    {/* Veliki broj u pozadini kartice */}
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -right-1 -top-3 text-[76px] font-bold leading-none text-brand-brown/[0.06]"
+                    >
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+
+                    <span
+                      className={`relative grid h-12 w-12 place-items-center rounded-2xl transition-colors duration-500 ${
+                        isActive
+                          ? 'bg-brand-brown text-brand-cream'
+                          : 'bg-brand-brown/10 text-brand-brown'
+                      }`}
+                    >
+                      <step.Icon className="h-[22px] w-[22px]" />
+                    </span>
+
+                    <h3 className="relative mt-5 text-xl font-bold text-brand-green sm:text-[22px]">
+                      {t(`process.${step.key}.title`)}
+                    </h3>
+                    <p className="relative mt-2.5 max-w-md leading-relaxed text-brand-brown/75">
+                      {t(`process.${step.key}.desc`)}
+                    </p>
+                  </div>
+                </motion.div>
               </li>
             )
           })}
@@ -208,10 +200,15 @@ export default function ProcessSection({
           <div className="mt-14 text-center">
             <Link
               to={viewAllHref}
-              className="inline-flex items-center gap-2 rounded-full bg-brand-brown px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#7c4e2f]"
+              className="group inline-flex items-center gap-2 rounded-full border border-brand-brown/25 bg-[#faf6ec]/70 px-7 py-3.5 text-sm font-semibold text-brand-brown backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-brown/50 hover:bg-[#f8f1e0]"
             >
               {t('process.viewAll')}
-              <span aria-hidden="true">→</span>
+              <span
+                aria-hidden="true"
+                className="transition-transform duration-300 group-hover:translate-x-1"
+              >
+                →
+              </span>
             </Link>
           </div>
         )}

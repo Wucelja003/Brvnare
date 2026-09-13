@@ -1,165 +1,335 @@
-import { Link, NavLink, useLocation } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from 'motion/react'
 import { useI18n } from '../i18n/LanguageContext'
+import { softEase, useIsDesktop } from '../lib/motion'
 import LanguageSwitcher from './LanguageSwitcher'
-import './Header.css'
+import InquiryButton from './nav/InquiryButton'
+import MenuIcon from './nav/MenuIcon'
+import MorphLabel from './nav/MorphLabel'
+import ScrollProgress from './nav/ScrollProgress'
 
-const navLinks = [
-  { to: '/proces', key: 'nav.process' },
-  { to: '/modeli', key: 'nav.models' },
+// Glavni linkovi u panelu
+const PRIMARY_LINKS = [
+  { key: 'nav.process', to: '/proces' },
+  { key: 'nav.models', to: '/modeli' },
+  { key: 'nav.packages', to: '/#paketi' },
+  { key: 'nav.contact', to: '/kontakt' },
 ]
 
-const btnBase =
-  'btn-ripple relative overflow-hidden rounded-[20px] px-6 py-[13px] text-[11px] font-bold uppercase tracking-[2px] cursor-pointer transition-all duration-300 border-0 hover:-translate-y-0.5'
+const SOCIAL_LINKS = [
+  { label: 'Instagram', href: '#' },
+  { label: 'X', href: '#' },
+  { label: 'LinkedIn', href: '#' },
+]
+
+const CLOSED_WIDTH_DESKTOP = 208
+const CLOSED_WIDTH_MOBILE = 132
+const OPEN_WIDTH = 300
+const CONTENT_WIDTH = OPEN_WIDTH - 16
+
+const ITEM_DELAY = 0.14
+const ITEM_STAGGER = 0.045
+
+const ITEM_VARIANTS: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      opacity: {
+        duration: 0.45,
+        ease: softEase,
+        delay: ITEM_DELAY + i * ITEM_STAGGER,
+      },
+      y: {
+        type: 'spring',
+        stiffness: 420,
+        damping: 42,
+        mass: 0.9,
+        restDelta: 0.01,
+        delay: ITEM_DELAY + i * ITEM_STAGGER,
+      },
+    },
+  }),
+}
+
+// Krem staklo sa braon ivicom — čitljivo i preko videa i preko krem pozadine
+const SURFACE =
+  'bg-brand-cream/85 border border-brand-brown/15 backdrop-blur-xl shadow-[0_12px_34px_-16px_rgba(53,71,51,0.45)]'
+
+// Logo se boji maskom (SVG je jednobojan) — braon na krem podlozi
+const logoMask: React.CSSProperties = {
+  maskImage: 'url(/BrvnaraLogo.svg)',
+  WebkitMaskImage: 'url(/BrvnaraLogo.svg)',
+  maskSize: 'contain',
+  WebkitMaskSize: 'contain',
+  maskRepeat: 'no-repeat',
+  WebkitMaskRepeat: 'no-repeat',
+  maskPosition: 'center',
+  WebkitMaskPosition: 'center',
+}
 
 export default function Header() {
-  const location = useLocation()
   const { t } = useI18n()
+  const location = useLocation()
+  const reduce = useReducedMotion()
+  const isDesktop = useIsDesktop('(min-width: 1024px)')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const closedWidth = isDesktop ? CLOSED_WIDTH_DESKTOP : CLOSED_WIDTH_MOBILE
   const overlay = location.pathname === '/'
-  const [open, setOpen] = useState(false)
+  const [pastHero, setPastHero] = useState(false)
+  // Logo je krem dok stoji preko hero videa, inače braon
+  const onVideo = overlay && !pastHero
+
+  const closeMenu = () => setMenuOpen(false)
+
+  // Prati da li smo proskrolovali hero video (samo na početnoj)
+  useEffect(() => {
+    if (!overlay) {
+      setPastHero(false)
+      return
+    }
+    let raf = 0
+    const update = () => {
+      raf = 0
+      setPastHero(window.scrollY > window.innerHeight - 120)
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [overlay])
 
   // Zatvori meni pri promeni rute
   useEffect(() => {
-    setOpen(false)
-  }, [location.pathname])
+    setMenuOpen(false)
+  }, [location.pathname, location.hash])
 
-  // Zaključaj skrol dok je mobilni meni otvoren
+  // Escape zatvara meni
   useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : ''
-    return () => {
-      document.body.style.overflow = ''
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setMenuOpen(false)
+      toggleRef.current?.focus()
     }
-  }, [open])
-
-  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `nav-link relative text-[16px] font-semibold no-underline whitespace-nowrap transition-colors ${
-      isActive ? 'text-white' : 'text-white/80 hover:text-white'
-    }`
-
-  const packagesClass =
-    'nav-link relative text-[16px] font-semibold no-underline whitespace-nowrap text-white/80 transition-colors hover:text-white'
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   return (
-    <header
-      className={`z-[20] px-5 py-[15px] ${
-        overlay ? 'absolute inset-x-0 top-0' : 'sticky top-0 bg-brand-green'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="shrink-0 flex items-center gap-3">
-          <img
-            src="/BrvnaraLogo.svg"
-            alt="Brvnara logo"
-            className="h-[52px] sm:h-[64px] w-auto brightness-0 invert"
-          />
-          <span className="text-white text-[20px] sm:text-[26px] tracking-[3px] uppercase font-semibold whitespace-nowrap">
-            Brvnara
-          </span>
-        </Link>
-
-        {/* Desktop navigacija */}
-        <nav className="hidden xl:flex nav-glass gap-8 rounded-full bg-black/25 px-7 py-[15px] backdrop-blur-xl">
-          {navLinks.map((link) => (
-            <NavLink key={link.to} to={link.to} className={navLinkClass}>
-              {t(link.key)}
-            </NavLink>
-          ))}
-          <Link to="/#paketi" className={packagesClass}>
-            {t('nav.packages')}
-          </Link>
-        </nav>
-
-        {/* Desktop: izbor jezika + dugme za formular */}
-        <div className="hidden xl:flex items-center gap-3 shrink-0">
-          <LanguageSwitcher />
+    <>
+      <header className="fixed inset-x-0 top-0 z-50">
+        <div className="relative flex h-20 items-center justify-between px-4 sm:px-6 lg:px-10">
+          {/* Logo — bez podloge */}
           <Link
-            to="/kontakt"
-            className={`${btnBase} text-white bg-brand-brown hover:bg-[#7c4e2f] hover:shadow-[0_0_20px_rgba(107,66,38,0.6)]`}
+            to="/"
+            aria-label="Brvnara — početna"
+            className="group flex h-[52px] items-center gap-2.5 transition-transform duration-300 hover:-translate-y-0.5 sm:gap-3"
           >
-            {t('nav.contact')}
+            <span
+              aria-hidden="true"
+              style={logoMask}
+              className={`h-8 w-8 shrink-0 transition-colors duration-300 group-hover:rotate-[8deg] sm:h-9 sm:w-9 ${
+                onVideo ? 'bg-brand-cream' : 'bg-brand-brown'
+              }`}
+            />
+            <span
+              className={`text-[13px] font-bold uppercase tracking-[0.26em] transition-colors duration-300 sm:text-[15px] ${
+                onVideo
+                  ? 'text-brand-cream drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]'
+                  : 'text-brand-brown'
+              }`}
+            >
+              Brvnara
+            </span>
           </Link>
-        </div>
 
-        {/* Hamburger — mobilni */}
-        <button
-          onClick={() => setOpen((o) => !o)}
-          aria-label="Meni"
-          aria-expanded={open}
-          className="xl:hidden relative w-11 h-11 flex flex-col items-center justify-center gap-[5px] rounded-full bg-black/30 border border-[rgba(107,66,38,0.5)] backdrop-blur-md transition-colors hover:border-brand-brown z-[30]"
-        >
-          <span
-            className={`block w-5 h-[2px] bg-white transition-all duration-300 ${
-              open ? 'translate-y-[7px] rotate-45' : ''
-            }`}
-          />
-          <span
-            className={`block w-5 h-[2px] bg-white transition-all duration-300 ${
-              open ? 'opacity-0' : ''
-            }`}
-          />
-          <span
-            className={`block w-5 h-[2px] bg-white transition-all duration-300 ${
-              open ? '-translate-y-[7px] -rotate-45' : ''
-            }`}
-          />
-        </button>
-      </div>
+          {/* Centralna kapsula — meni koji se širi */}
+          <div className="absolute right-4 top-2.5 z-50 sm:right-6 lg:right-auto lg:left-1/2 lg:-translate-x-1/2">
+            <motion.div
+              initial={false}
+              animate={{ width: menuOpen ? OPEN_WIDTH : closedWidth }}
+              transition={
+                reduce ? { duration: 0.01 } : { duration: 0.45, ease: softEase }
+              }
+              className="relative rounded-[30px] p-2"
+            >
+              {/* Podloga panela — pojavljuje se samo kada je otvoren */}
+              <motion.div
+                initial={false}
+                animate={{ opacity: menuOpen ? 1 : 0 }}
+                transition={{ duration: 0.35, ease: softEase }}
+                className={`pointer-events-none absolute inset-0 rounded-[30px] ${SURFACE}`}
+              />
 
-      {/* Mobilni meni */}
-      <div
-        className={`xl:hidden fixed inset-0 z-[10] transition-all duration-500 ${
-          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <div
-          onClick={() => setOpen(false)}
-          className="absolute inset-0 bg-black/70 backdrop-blur-md"
-        />
+              <div className="relative">
+                <div
+                  className={`flex h-[52px] w-full items-center justify-end gap-2 rounded-full px-1.5 text-brand-brown lg:justify-between lg:pr-2 ${
+                    menuOpen ? '' : SURFACE
+                  }`}
+                >
+                  <button
+                    ref={toggleRef}
+                    type="button"
+                    onClick={() => setMenuOpen((o) => !o)}
+                    aria-expanded={menuOpen}
+                    aria-label={menuOpen ? t('nav.close') : t('nav.menu')}
+                    className="flex cursor-pointer items-center gap-2.5 rounded-full px-3 py-1.5 text-sm font-semibold transition-opacity hover:opacity-70"
+                  >
+                    <MenuIcon open={menuOpen} />
+                    <MorphLabel value={menuOpen ? t('nav.close') : t('nav.menu')} />
+                  </button>
+                  {isDesktop && <ScrollProgress />}
+                </div>
 
-        <div
-          className={`absolute right-0 top-0 h-full w-[85%] max-w-sm bg-brand-green border-l border-[rgba(107,66,38,0.5)] shadow-[-8px_0_32px_rgba(0,0,0,0.4)] flex flex-col px-7 pt-24 pb-8 transition-transform duration-500 ease-out ${
-            open ? 'translate-x-0' : 'translate-x-full'
-          }`}
-        >
-          <div className="mb-6">
+                <AnimatePresence initial={false}>
+                  {menuOpen && (
+                    <motion.div
+                      key="panel"
+                      initial={{ height: 0 }}
+                      animate={{ height: 'auto' }}
+                      exit={{ height: 0 }}
+                      transition={
+                        reduce
+                          ? { duration: 0.01 }
+                          : { duration: 0.45, ease: softEase }
+                      }
+                      className="overflow-hidden"
+                    >
+                      <div className="flex justify-center">
+                        <motion.div
+                          initial={reduce ? false : 'hidden'}
+                          animate={reduce ? false : 'visible'}
+                          style={{ width: CONTENT_WIDTH }}
+                          className="shrink-0 px-4 pb-3 pt-6"
+                        >
+                          {/* Glavni linkovi */}
+                          <div className="flex flex-col gap-1.5">
+                            <motion.span
+                              custom={0}
+                              variants={ITEM_VARIANTS}
+                              className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-brown/50"
+                            >
+                              {t('nav.menu')}
+                            </motion.span>
+                            {PRIMARY_LINKS.map((link, i) => (
+                              <motion.div
+                                key={link.to}
+                                custom={1 + i}
+                                variants={ITEM_VARIANTS}
+                                className="w-fit"
+                              >
+                                <Link
+                                  to={link.to}
+                                  onClick={closeMenu}
+                                  className="block text-[26px] font-bold leading-tight tracking-tight text-brand-brown transition-colors hover:text-brand-brown/55"
+                                >
+                                  {t(link.key)}
+                                </Link>
+                              </motion.div>
+                            ))}
+                          </div>
+
+                          <motion.div
+                            custom={5}
+                            variants={ITEM_VARIANTS}
+                            className="my-6 h-px w-full bg-brand-brown/15"
+                          />
+
+                          {/* Jezik — na telefonu (na desktopu je u zaglavlju) */}
+                          <motion.div
+                            custom={6}
+                            variants={ITEM_VARIANTS}
+                            className="flex flex-col gap-2.5 lg:hidden"
+                          >
+                            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-brown/50">
+                              {t('nav.language')}
+                            </span>
+                            <LanguageSwitcher align="left" />
+                          </motion.div>
+
+                          {/* Društvene mreže */}
+                          <div className="mt-7 flex flex-col gap-3">
+                            <motion.span
+                              custom={7}
+                              variants={ITEM_VARIANTS}
+                              className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-brown/50"
+                            >
+                              {t('nav.social')}
+                            </motion.span>
+                            <div className="flex flex-wrap gap-x-5 gap-y-2">
+                              {SOCIAL_LINKS.map((link, i) => (
+                                <motion.a
+                                  key={link.label}
+                                  href={link.href}
+                                  custom={8 + i}
+                                  variants={ITEM_VARIANTS}
+                                  className="text-sm font-semibold text-brand-brown/70 transition-colors hover:text-brand-brown"
+                                >
+                                  {link.label}
+                                </motion.a>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* CTA */}
+                          <motion.div
+                            custom={11}
+                            variants={ITEM_VARIANTS}
+                            className="mt-7"
+                          >
+                            <InquiryButton onClick={closeMenu} full />
+                          </motion.div>
+                        </motion.div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Jezik + upit (desktop) */}
+          <div className="hidden items-center gap-2.5 lg:flex">
             <LanguageSwitcher />
-          </div>
-
-          <nav className="flex flex-col gap-2">
-            {navLinks.map((link, i) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className="text-white/90 text-[18px] font-semibold py-3 border-b border-[rgba(107,66,38,0.35)] transition-colors hover:text-white"
-                style={{
-                  animation: open
-                    ? `mobileItemIn 0.4s ease ${i * 0.07}s both`
-                    : 'none',
-                }}
-              >
-                {t(link.key)}
-              </NavLink>
-            ))}
-            <Link
-              to="/#paketi"
-              onClick={() => setOpen(false)}
-              className="text-white/90 text-[18px] font-semibold py-3 border-b border-[rgba(107,66,38,0.35)] transition-colors hover:text-white"
-            >
-              {t('nav.packages')}
-            </Link>
-          </nav>
-
-          <div className="mt-8">
-            <Link
-              to="/kontakt"
-              className={`${btnBase} block text-center w-full text-white bg-brand-brown`}
-            >
-              {t('nav.contact')}
-            </Link>
+            <InquiryButton />
           </div>
         </div>
-      </div>
-    </header>
+
+        {/* Klik van menija zatvara */}
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.button
+              type="button"
+              aria-label={t('nav.close')}
+              onClick={closeMenu}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 -z-10 cursor-default"
+            />
+          )}
+        </AnimatePresence>
+      </header>
+
+      {/* Odmak za sadržaj kada nema hero videa ispod headera */}
+      {!overlay && <div className="h-20" aria-hidden="true" />}
+    </>
   )
 }

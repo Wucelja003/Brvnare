@@ -1,0 +1,106 @@
+/* Dugme „Pošaljite upit" — boje koje teku kroz dugme + odsjaj */
+.cta-flow {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-image: linear-gradient(
+    110deg,
+    #5b3720 0%,
+    #6b4226 22%,
+    #8a5a34 42%,
+    #c09256 52%,
+    #8a5a34 62%,
+    #6b4226 82%,
+    #5b3720 100%
+  );
+  background-size: 260% 100%;
+  background-position: 100% 0;
+  animation: ctaFlow 7s linear infinite;
+  box-shadow:
+    0 14px 34px -14px rgba(107, 66, 38, 0.85),
+    inset 0 1px 0 rgba(240, 230, 210, 0.18);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes ctaFlow {
+  to {
+    background-position: -160% 0;
+  }
+}
+
+/* Odsjaj koji prelazi preko dugmeta */
+.cta-flow::after {
+  content: '';
+  position: absolute;
+  inset: -20% -10%;
+  z-index: -1;
+  background: linear-gradient(
+    100deg,
+    transparent 38%,
+    rgba(240, 230, 210, 0.38) 50%,
+    transparent 62%
+  );
+  transform: translateX(-130%);
+  animation: ctaGlare 5s ease-in-out infinite;
+}
+
+@keyframes ctaGlare {
+  0%,
+  55% {
+    transform: translateX(-130%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+.cta-flow:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 44px -14px rgba(107, 66, 38, 0.95),
+    0 0 0 1px rgba(240, 230, 210, 0.25),
+    inset 0 1px 0 rgba(240, 230, 210, 0.28);
+}
+
+.cta-flow:active {
+  transform: translateY(0);
+}
+
+/* Tačkica koja „diše" ispred teksta */
+.cta-dot {
+  animation: ctaPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes ctaPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+/* Strelica na hover */
+.cta-flow .cta-arrow {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cta-flow:hover .cta-arrow {
+  transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-flow,
+  .cta-flow::after,
+  .cta-dot {
+    animation: none;
+  }
+  .cta-flow {
+    background-position: 50% 0;
+  }
+}
