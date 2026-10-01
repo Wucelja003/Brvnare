@@ -8,6 +8,7 @@ import {
   type Variants,
 } from 'motion/react'
 import { useI18n } from '../i18n/LanguageContext'
+import SplitHeading from './fx/SplitHeading'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
@@ -104,9 +105,10 @@ export default function FaqSection() {
             <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-brand-brown">
               {t('faq.eyebrow')}
             </span>
-            <h2 className="mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-brand-green sm:text-5xl">
-              {t('faq.title')}
-            </h2>
+            <SplitHeading
+              pre={t('faq.title')}
+              className="mt-4 text-4xl leading-[1.05] tracking-tight text-brand-green sm:text-5xl"
+            />
           </motion.div>
 
           {/* Pretraga */}

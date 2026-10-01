@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'motion/react'
 import { useI18n } from '../i18n/LanguageContext'
 import { packagePlans } from '../data/packages'
+import SplitHeading from '../Components/fx/SplitHeading'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
@@ -75,9 +76,10 @@ export default function Packages() {
           <span className="mb-3 inline-block text-[11px] font-semibold uppercase tracking-[0.28em] text-brand-brown">
             {t('packages.eyebrow')}
           </span>
-          <h2 className="text-4xl font-bold leading-[1.05] tracking-tight text-brand-green sm:text-5xl">
-            {t('packages.title')}
-          </h2>
+          <SplitHeading
+            pre={t('packages.title')}
+            className="text-4xl leading-[1.05] tracking-tight text-brand-green sm:text-5xl"
+          />
           <p className="mt-4 max-w-xl leading-relaxed text-brand-brown/80">
             {t('packages.subtitle')}
           </p>

@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState, type SVGProps } from 'react'
+import { useRef, type ComponentType, type SVGProps } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useReducedMotion } from 'motion/react'
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+  type MotionValue,
+} from 'motion/react'
 import { useI18n } from '../i18n/LanguageContext'
-import { softEase } from '../lib/motion'
-import './ProcessSection.css'
+import SplitHeading from './fx/SplitHeading'
 
 const iconBase: SVGProps<SVGSVGElement> = {
   viewBox: '0 0 24 24',
@@ -49,170 +54,208 @@ const KeyIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
-const steps = [
-  { key: 'step1', Icon: ConsultIcon },
-  { key: 'step2', Icon: DesignIcon },
-  { key: 'step3', Icon: BuildIcon },
-  { key: 'step4', Icon: InteriorIcon },
-  { key: 'step5', Icon: KeyIcon },
+const ClockIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...iconBase} {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+)
+
+// Slike koraka (placeholder — menjaju se kada stignu fotografije sa gradilišta)
+const steps: {
+  key: string
+  Icon: ComponentType<SVGProps<SVGSVGElement>>
+  image: string
+}[] = [
+  { key: 'step1', Icon: ConsultIcon, image: '/brvnara_photo/Ent_8.jpg' },
+  { key: 'step2', Icon: DesignIcon, image: '/3dmodels/3dmodels1.jpg' },
+  { key: 'step3', Icon: BuildIcon, image: '/brvnara_photo/Photo_3.jpg' },
+  { key: 'step4', Icon: InteriorIcon, image: '/brvnara_photo/Ent_1.jpg' },
+  { key: 'step5', Icon: KeyIcon, image: '/brvnara_photo/Photo_7.jpg' },
 ]
 
-export default function ProcessSection({
-  viewAllHref,
+function StepCard({
+  step,
+  index,
+  total,
+  progress,
 }: {
-  viewAllHref?: string
+  step: (typeof steps)[number]
+  index: number
+  total: number
+  progress: MotionValue<number>
 }) {
   const { t } = useI18n()
   const reduce = useReducedMotion()
-  const timelineRef = useRef<HTMLDivElement>(null)
-  const [progress, setProgress] = useState(0)
-  const [active, setActive] = useState<boolean[]>(() => steps.map(() => false))
+  const cardRef = useRef<HTMLElement>(null)
+  const last = index === total - 1
+  const num = String(index + 1).padStart(2, '0')
 
-  // Popuna šine i aktivne tačke prate skrol
-  useEffect(() => {
-    const wrap = timelineRef.current
-    if (!wrap) return
-    let raf = 0
-    const update = () => {
-      raf = 0
-      const rect = wrap.getBoundingClientRect()
-      const anchor = (window.innerHeight || 800) * 0.55
-      const p = Math.min(
-        1,
-        Math.max(0, (anchor - rect.top) / Math.max(rect.height, 1)),
-      )
-      setProgress(p)
-      const dots = wrap.querySelectorAll<HTMLElement>('[data-dot]')
-      setActive(
-        Array.from(dots).map((d) => {
-          const r = d.getBoundingClientRect()
-          return r.top + r.height / 2 <= anchor + 2
-        }),
-      )
-    }
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update)
-    }
-    update()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll)
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
-      if (raf) cancelAnimationFrame(raf)
-    }
-  }, [])
+  // Prethodne kartice se blago smanje i zatamne dok nove klize preko njih
+  const scale = useTransform(progress, [index / total, 1], [1, 1 - (total - 1 - index) * 0.045])
+  const shade = useTransform(
+    progress,
+    [index / total, Math.min(1, (index + 1) / total)],
+    [0, last ? 0 : 0.14],
+  )
+  // Fotografija se lagano „smiri" dok kartica ulazi
+  const { scrollYProgress: entering } = useScroll({
+    target: cardRef,
+    offset: ['start end', 'start start'],
+  })
+  const imageScale = useTransform(entering, [0, 1], [1.22, 1])
+
+  const points = t(`process.${step.key}.points`).split('|')
+
+  return (
+    <div className="sticky top-24 flex h-[82svh] items-start sm:top-28">
+      <motion.article
+        ref={cardRef}
+        style={reduce ? { top: index * 22 } : { top: index * 22, scale }}
+        className={`relative grid w-full origin-top overflow-hidden rounded-[34px] border shadow-[0_-26px_60px_-36px_rgba(53,71,51,0.45),0_44px_90px_-52px_rgba(53,71,51,0.7)] lg:h-[min(calc(100svh-190px),540px)] lg:grid-cols-[1fr_1.05fr] ${
+          last
+            ? 'border-[#4a2d19] bg-brand-brown text-brand-cream'
+            : 'border-brand-brown/12 bg-[#faf6ec] text-brand-brown'
+        }`}
+      >
+        {/* Fotografija (na telefonu gore) */}
+        <div className="relative order-first m-2.5 h-44 overflow-hidden rounded-[26px] sm:h-60 lg:order-none lg:col-start-2 lg:row-start-1 lg:m-3 lg:h-auto">
+          <motion.img
+            src={step.image}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            style={reduce ? undefined : { scale: imageScale }}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+          <span className="absolute bottom-4 left-4 grid h-11 w-11 place-items-center rounded-2xl bg-brand-cream/90 text-brand-brown shadow-lg backdrop-blur-md">
+            <step.Icon className="h-5 w-5" />
+          </span>
+        </div>
+
+        {/* Sadržaj */}
+        <div className="relative flex flex-col px-7 pb-8 pt-5 sm:px-10 sm:pb-10 lg:col-start-1 lg:row-start-1 lg:p-12">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-[10px] font-bold uppercase tracking-[0.24em] opacity-60">
+              {t('process.step')} {num} / {String(total).padStart(2, '0')}
+            </span>
+            <span
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] ${
+                last ? 'border-brand-cream/30' : 'border-brand-brown/20'
+              }`}
+            >
+              <ClockIcon className="h-3.5 w-3.5" />
+              {t(`process.${step.key}.time`)}
+            </span>
+          </div>
+
+          {/* Veliki broj u pozadini */}
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute -bottom-8 right-2 select-none font-serif text-[150px] font-bold leading-none text-transparent lg:text-[210px] ${
+              last
+                ? '[-webkit-text-stroke:1.5px_rgba(240,230,210,0.16)]'
+                : '[-webkit-text-stroke:1.5px_rgba(107,66,38,0.13)]'
+            }`}
+          >
+            {num}
+          </span>
+
+          <div className="relative mt-6 lg:mt-auto">
+            <h3
+              className={`text-3xl leading-tight sm:text-4xl ${
+                last ? 'text-brand-cream' : 'text-brand-green'
+              }`}
+            >
+              {t(`process.${step.key}.title`)}
+            </h3>
+            <p className="mt-3 max-w-md leading-relaxed opacity-80">
+              {t(`process.${step.key}.desc`)}
+            </p>
+            <ul className="mt-6 space-y-2.5">
+              {points.map((point) => (
+                <li key={point} className="flex items-center gap-3 text-sm">
+                  <span
+                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-full ${
+                      last ? 'bg-brand-cream text-brand-brown' : 'bg-brand-brown text-brand-cream'
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5" aria-hidden="true">
+                      <path d="M4 12l5 5L20 6" />
+                    </svg>
+                  </span>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Zatamnjenje kada je kartica prekrivena */}
+        <motion.div
+          aria-hidden="true"
+          style={{ opacity: shade }}
+          className="pointer-events-none absolute inset-0 bg-[#2a1a0f]"
+        />
+      </motion.article>
+    </div>
+  )
+}
+
+export default function ProcessSection({ viewAllHref }: { viewAllHref?: string }) {
+  const { t } = useI18n()
+  const stackRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: stackRef,
+    offset: ['start start', 'end end'],
+  })
 
   return (
     <section className="relative px-5 py-20 sm:px-8 sm:py-28">
       {/* Zaglavlje */}
-      <div className="mx-auto mb-14 max-w-2xl text-center sm:mb-20">
+      <div className="mx-auto mb-10 max-w-2xl text-center sm:mb-14">
         <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-brand-brown">
           {t('process.eyebrow')}
         </span>
-        <h2 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-brand-green sm:text-5xl">
-          {t('process.titlePre')}{' '}
-          <span className="bg-gradient-to-b from-[#5a7a54] via-[#43603f] to-[#354733] bg-clip-text pb-[0.16em] text-transparent">
-            {t('process.titleHighlight')}
-          </span>
-        </h2>
+        <SplitHeading
+          pre={t('process.titlePre')}
+          highlight={t('process.titleHighlight')}
+          className="mt-5 text-4xl leading-[1.05] tracking-tight text-brand-green sm:text-5xl"
+        />
         <p className="mx-auto mt-5 max-w-xl leading-relaxed text-brand-brown/80">
           {t('process.subtitle')}
         </p>
       </div>
 
-      {/* Vremenska linija — šina po sredini, kartice naizmenično levo/desno */}
-      <div ref={timelineRef} className="relative mx-auto max-w-5xl">
-        {/* Šina */}
-        <div className="process-rail pointer-events-none absolute bottom-10 left-[27px] top-10 w-0.5 -translate-x-1/2 md:left-1/2" />
-        {/* Popuna koja raste sa skrolom */}
-        <div
-          className="process-fill pointer-events-none absolute left-[27px] top-10 w-0.5 -translate-x-1/2 rounded-full bg-brand-brown md:left-1/2"
-          style={{ height: `calc(${progress} * (100% - 5rem))` }}
-        />
-
-        <ol className="relative space-y-5 sm:space-y-7">
-          {steps.map((step, i) => {
-            const even = i % 2 === 0
-            const isActive = active[i]
-            return (
-              <li key={step.key} className="relative md:grid md:grid-cols-2">
-                {/* Tačka sa brojem — tačno na šini */}
-                <span
-                  data-dot
-                  className={`process-dot absolute left-[27px] top-10 z-10 flex h-[54px] w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-[13px] font-bold md:left-1/2 md:top-1/2 ${
-                    isActive
-                      ? 'is-active border-brand-brown bg-brand-brown text-brand-cream'
-                      : 'border-brand-brown/20 bg-[#faf6ec] text-brand-brown/45'
-                  }`}
-                >
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-
-                <motion.div
-                  initial={reduce ? false : { opacity: 0, y: 28 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-60px' }}
-                  transition={{ duration: 0.6, ease: softEase }}
-                  className={`pl-16 sm:pl-20 md:pl-0 ${
-                    even ? 'md:col-start-1 md:pr-16' : 'md:col-start-2 md:pl-16'
-                  }`}
-                >
-                  <div
-                    className={`process-card group relative overflow-hidden rounded-[28px] border p-6 backdrop-blur-sm sm:p-7 ${
-                      isActive
-                        ? 'border-brand-brown/35 bg-[#f8f1e0] shadow-[0_26px_60px_-30px_rgba(53,71,51,0.6)]'
-                        : 'border-brand-brown/12 bg-[#faf6ec]/75 shadow-[0_18px_44px_-30px_rgba(53,71,51,0.5)]'
-                    }`}
-                  >
-                    {/* Veliki broj u pozadini kartice */}
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -right-1 -top-3 text-[76px] font-bold leading-none text-brand-brown/[0.06]"
-                    >
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-
-                    <span
-                      className={`relative grid h-12 w-12 place-items-center rounded-2xl transition-colors duration-500 ${
-                        isActive
-                          ? 'bg-brand-brown text-brand-cream'
-                          : 'bg-brand-brown/10 text-brand-brown'
-                      }`}
-                    >
-                      <step.Icon className="h-[22px] w-[22px]" />
-                    </span>
-
-                    <h3 className="relative mt-5 text-xl font-bold text-brand-green sm:text-[22px]">
-                      {t(`process.${step.key}.title`)}
-                    </h3>
-                    <p className="relative mt-2.5 max-w-md leading-relaxed text-brand-brown/75">
-                      {t(`process.${step.key}.desc`)}
-                    </p>
-                  </div>
-                </motion.div>
-              </li>
-            )
-          })}
-        </ol>
-
-        {viewAllHref && (
-          <div className="mt-14 text-center">
-            <Link
-              to={viewAllHref}
-              className="group inline-flex items-center gap-2 rounded-full border border-brand-brown/25 bg-[#faf6ec]/70 px-7 py-3.5 text-sm font-semibold text-brand-brown backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-brown/50 hover:bg-[#f8f1e0]"
-            >
-              {t('process.viewAll')}
-              <span
-                aria-hidden="true"
-                className="transition-transform duration-300 group-hover:translate-x-1"
-              >
-                →
-              </span>
-            </Link>
-          </div>
-        )}
+      {/* Kartice koje se slažu jedna preko druge dok se skroluje */}
+      <div ref={stackRef} className="relative mx-auto max-w-6xl">
+        {steps.map((step, i) => (
+          <StepCard
+            key={step.key}
+            step={step}
+            index={i}
+            total={steps.length}
+            progress={scrollYProgress}
+          />
+        ))}
       </div>
+
+      {viewAllHref && (
+        <div className="mt-6 text-center">
+          <Link
+            to={viewAllHref}
+            className="group inline-flex h-[52px] items-center gap-4 rounded-full border border-brand-brown/25 bg-[#faf6ec]/70 pl-6 pr-2 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-brown backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-brown/50"
+          >
+            {t('process.viewAll')}
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-brown text-brand-cream transition-transform duration-300 group-hover:translate-x-0.5">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                <path d="M5 12h13M13 6l6 6-6 6" />
+              </svg>
+            </span>
+          </Link>
+        </div>
+      )}
     </section>
   )
 }
