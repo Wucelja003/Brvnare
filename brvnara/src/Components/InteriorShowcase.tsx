@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   motion,
@@ -44,6 +44,45 @@ const textStagger: Variants = {
   visible: { transition: { staggerChildren: 0.1 } },
 }
 
+/** Slika koja se „otkrije" odozdo kada uđe u ekran, uz blagi zoom pri hoveru */
+function RevealImage({
+  src,
+  alt,
+  className = '',
+  children,
+}: {
+  src: string
+  alt: string
+  className?: string
+  children?: ReactNode
+}) {
+  const reduce = useReducedMotion()
+  return (
+    <motion.div
+      initial={reduce ? false : { clipPath: 'inset(100% 0% 0% 0% round 28px)' }}
+      whileInView={{ clipPath: 'inset(0% 0% 0% 0% round 28px)' }}
+      viewport={{ once: true, margin: '-8% 0px' }}
+      transition={{ duration: 1.1, ease: softEase }}
+      className={`group relative overflow-hidden rounded-[28px] bg-brand-brown/10 shadow-[0_30px_70px_-40px_rgba(53,71,51,0.7)] ${className}`}
+    >
+      <div className="absolute inset-0 transition-transform duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.07]">
+        <motion.img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          initial={reduce ? false : { scale: 1.25 }}
+          whileInView={{ scale: 1 }}
+          viewport={{ once: true, margin: '-8% 0px' }}
+          transition={{ duration: 1.5, ease: softEase }}
+          className="h-full w-full object-cover"
+        />
+      </div>
+      {children}
+    </motion.div>
+  )
+}
+
 export default function InteriorShowcase() {
   const reduce = useReducedMotion()
   const sectionRef = useRef<HTMLElement>(null)
@@ -60,11 +99,17 @@ export default function InteriorShowcase() {
   }
 
   return (
-    <section ref={sectionRef} className="relative py-20 sm:py-28">
-      {/* Linije između polja: gap-px na braon podlozi */}
-      <div className="grid gap-px border-y border-brand-brown/15 bg-brand-brown/15 lg:grid-cols-[1fr_1.4fr]">
-        {/* Levo — velika slika */}
-        <div className="relative min-h-[62svh] overflow-hidden bg-[#2a1a0f] lg:min-h-0">
+    <section ref={sectionRef} className="relative px-3 py-20 sm:px-4 sm:py-28 lg:px-5">
+      {/* Bez podloge — slike lebde na pozadini sajta, tekst stoji direktno na njoj */}
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[1fr_1.4fr]">
+        {/* Levo — velika slika sa naslovom */}
+        <motion.div
+          initial={reduce ? false : { clipPath: 'inset(100% 0% 0% 0% round 32px)' }}
+          whileInView={{ clipPath: 'inset(0% 0% 0% 0% round 32px)' }}
+          viewport={{ once: true, margin: '-8% 0px' }}
+          transition={{ duration: 1.2, ease: softEase }}
+          className="relative min-h-[62svh] overflow-hidden rounded-[32px] bg-[#2a1a0f] shadow-[0_40px_90px_-46px_rgba(53,71,51,0.75)] lg:min-h-0"
+        >
           <motion.img
             src="/brvnara_photo/Ent_6.jpg"
             alt="Enterijer brvnare sa kaminom"
@@ -101,10 +146,7 @@ export default function InteriorShowcase() {
               Ne predajemo prazne zidove. Od prvog nacrta do poslednjeg jastuka
               — enterijer sređujemo mi, u istom duhu kao i kuću.
             </motion.p>
-            <motion.ul
-              variants={textItem}
-              className="mt-6 flex flex-wrap gap-2"
-            >
+            <motion.ul variants={textItem} className="mt-6 flex flex-wrap gap-2">
               {highlights.map((h) => (
                 <li
                   key={h}
@@ -115,79 +157,80 @@ export default function InteriorShowcase() {
               ))}
             </motion.ul>
           </motion.div>
-        </div>
+        </motion.div>
 
-        {/* Desno — mozaik: slika / tekst, pa obrnuto */}
-        <div className="grid gap-px">
-          {rows.map((row, i) => (
-            <div key={row.title} className="grid gap-px sm:grid-cols-2">
-              <div
-                className={`group relative min-h-[220px] overflow-hidden bg-[#2a1a0f] sm:min-h-[220px] xl:min-h-[250px] ${
-                  i % 2 === 1 ? 'sm:order-2' : ''
-                }`}
-              >
-                <img
+        {/* Desno — slika / tekst, pa obrnuto (tekst bez pozadine) */}
+        <div className="grid gap-3 sm:gap-4">
+          {rows.map((row, i) => {
+            const num = String(i + 1).padStart(2, '0')
+            return (
+              <div key={row.title} className="grid items-center gap-3 sm:grid-cols-2 sm:gap-4">
+                <RevealImage
                   src={row.image}
                   alt={row.alt}
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-brand-brown/20 transition-colors duration-700 group-hover:bg-transparent" />
-              </div>
+                  className={`min-h-[240px] sm:min-h-[230px] xl:min-h-[260px] ${
+                    i % 2 === 1 ? 'sm:order-2' : ''
+                  }`}
+                >
+                  <span className="absolute left-4 top-4 rounded-full border border-white/30 bg-black/20 px-3 py-1 font-serif text-xs font-bold text-brand-cream backdrop-blur-md">
+                    {num}
+                  </span>
+                </RevealImage>
 
-              <motion.div
-                className="relative flex flex-col justify-center overflow-hidden bg-[#faf6ec] px-8 py-7 sm:px-10 xl:px-12"
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: '-10% 0px' }}
-                variants={textStagger}
-              >
-                {/* Redni broj kao vodeni žig */}
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute -right-2 -top-3 text-[76px] font-bold leading-none text-brand-brown/[0.06]"
+                <motion.div
+                  className="relative flex flex-col justify-center px-3 py-5 sm:px-6 xl:px-10"
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, margin: '-10% 0px' }}
+                  variants={textStagger}
                 >
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-
-                <motion.p
-                  variants={textItem}
-                  className="relative text-[10px] font-semibold uppercase tracking-[0.28em] text-brand-brown"
-                >
-                  {row.subtitle}
-                </motion.p>
-                <motion.h3
-                  variants={textItem}
-                  className="relative mt-3 text-2xl leading-tight text-brand-green xl:text-3xl"
-                >
-                  {row.title}
-                </motion.h3>
-                <motion.p
-                  variants={textItem}
-                  className="relative mt-3 max-w-sm text-sm leading-relaxed text-brand-brown/70"
-                >
-                  {row.text}
-                </motion.p>
-                <motion.div variants={textItem} className="relative mt-5">
-                  <Link
-                    to={row.link.to}
-                    className="group/link relative inline-flex items-center gap-2 pb-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand-brown"
-                  >
-                    {row.link.label}
-                    <span
-                      aria-hidden="true"
-                      className="transition-transform duration-500 group-hover/link:translate-x-1"
-                    >
-                      →
+                  <motion.div variants={textItem} className="flex items-center gap-3">
+                    <span className="font-serif text-sm font-bold text-brand-brown/45">
+                      {num}
                     </span>
-                    <span className="absolute bottom-0 left-0 h-px w-full origin-left bg-brand-brown/30" />
-                    <span className="absolute bottom-0 left-0 h-px w-full origin-right scale-x-0 bg-brand-brown transition-transform duration-500 group-hover/link:origin-left group-hover/link:scale-x-100" />
-                  </Link>
+                    <span className="h-px w-8 bg-brand-brown/30" />
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-brand-brown">
+                      {row.subtitle}
+                    </span>
+                  </motion.div>
+                  <motion.h3
+                    variants={textItem}
+                    className="mt-4 text-3xl leading-tight text-brand-green xl:text-4xl"
+                  >
+                    {row.title}
+                  </motion.h3>
+                  <motion.p
+                    variants={textItem}
+                    className="mt-3 max-w-sm text-sm leading-relaxed text-brand-brown/75"
+                  >
+                    {row.text}
+                  </motion.p>
+                  <motion.div variants={textItem} className="mt-6">
+                    <Link
+                      to={row.link.to}
+                      className="group/link inline-flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand-brown"
+                    >
+                      <span className="grid h-10 w-10 place-items-center rounded-full border border-brand-brown/30 transition-all duration-500 group-hover/link:border-brand-brown group-hover/link:bg-brand-brown group-hover/link:text-brand-cream">
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-4 w-4 transition-transform duration-500 group-hover/link:-rotate-45"
+                          aria-hidden="true"
+                        >
+                          <path d="M5 12h13M13 6l6 6-6 6" />
+                        </svg>
+                      </span>
+                      {row.link.label}
+                    </Link>
+                  </motion.div>
                 </motion.div>
-              </motion.div>
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
       </div>
     </section>
